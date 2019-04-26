@@ -23,13 +23,22 @@ class Simpletron {
 private:
 	int memory[MEM_SIZE] = { 0 };
 	regs reg = { 0 };
-	map<short, bool(Simpletron::*)(short)> handlers;
+	map<short, bool(Simpletron::*)(short)> handlers = {
+		{OpCode::READ, &Simpletron::opRead},
+		{OpCode::READ, &Simpletron::opRead},
+		{OpCode::WRITE, &Simpletron::opWrite},
+		{OpCode::LOAD, &Simpletron::opLoad},
+		{OpCode::STORE, &Simpletron::opStore},
+		{OpCode::ADD, &Simpletron::opAdd},
+		{OpCode::SUBTRACT, &Simpletron::opSubtract},
+		{OpCode::DIVIDE, &Simpletron::opDivide},
+		{OpCode::MULTIPLY, &Simpletron::opMultiply},
+		{OpCode::BRANCH, &Simpletron::opBranch},
+		{OpCode::BRANCHNEG, &Simpletron::opBranchNeg},
+		{OpCode::BRACHZERO, &Simpletron::opBranchZero},
+		{OpCode::HALT, &Simpletron::opHalt}
+	};
 	
-	void iniInstructionHandlers();
-	void load(const vector<short> program);
-	void reset();
-	void execute();
-
 	bool opRead(const short operand);
 	bool opWrite(const short operand);	
 	bool opLoad(const short operand);
@@ -42,6 +51,12 @@ private:
 	bool opBranchNeg(const short operand);
 	bool opBranchZero(const short operand);
 	bool opHalt(const short memPosition);		
+
+	void load(const vector<short> program);
+	void reset();
+	void execute();
+	void dumpRegisters() const;
+	void dumpMemory() const;
 
 public:
 
@@ -58,12 +73,10 @@ public:
 		BRANCHNEG = 41,
 		BRACHZERO = 42,
 		HALT = 43
-	};
-
-	Simpletron();
+	};	
 	
 	bool parse(const vector<short> program);
-	void dump();
+	void dump() const;
 	void run(const vector<short> program);
 };
 

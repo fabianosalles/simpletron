@@ -3,20 +3,6 @@
 #include "Simpletron.h"
 
 
-void Simpletron::iniInstructionHandlers() {
-	handlers[OpCode::READ] = &Simpletron::opRead;
-	handlers[OpCode::WRITE] = &Simpletron::opWrite;
-	handlers[OpCode::LOAD] = &Simpletron::opLoad;
-	handlers[OpCode::STORE] = &Simpletron::opStore;
-	handlers[OpCode::ADD] = &Simpletron::opAdd;
-	handlers[OpCode::SUBTRACT] = &Simpletron::opSubtract;
-	handlers[OpCode::DIVIDE] = &Simpletron::opDivide;
-	handlers[OpCode::MULTIPLY] = &Simpletron::opMultiply;
-	handlers[OpCode::BRANCH] = &Simpletron::opBranch;
-	handlers[OpCode::BRANCHNEG] = &Simpletron::opBranchNeg;
-	handlers[OpCode::BRACHZERO] = &Simpletron::opBranchZero;
-	handlers[OpCode::HALT] = &Simpletron::opHalt;
-}
 
 void Simpletron::load(const vector<short> program) {
 	for (auto i = 0; i < (int)program.size(); i++)
@@ -50,6 +36,7 @@ void Simpletron::run(const vector<short> program) {
 	load(program);
 	cout << "Running..." << endl;
 	execute();
+	cout << endl;
 	dump();
 }
 
@@ -87,33 +74,32 @@ bool Simpletron::parse(const vector<short> program) {
 	return true;
 }
 
-Simpletron::Simpletron() {
-	iniInstructionHandlers();
+void Simpletron::dumpRegisters() const {
+	cout << "Registers:" << endl;
+	cout << "  accumulator         : " << showpos << setfill('0') << setw(5) << internal << reg.accumulator << endl;
+	cout << "  instructionCounter  : " << noshowpos << setfill(' ') << setw(5) << internal << reg.counter << endl;
+	cout << "  instructionRegister : " << showpos << setfill('0') << setw(5) << internal << reg.instruction << endl;
+	cout << "  operationCode       : " << noshowpos << setfill(' ') << setw(5) << internal << reg.opCode << endl;
+	cout << "  operand             : " << noshowpos << setfill(' ') << setw(5) << internal << reg.operand << endl;	
 }
 
-
-void Simpletron::dump() {
-	cout << "\nREGISTRADORES:" << endl;
-	cout << setw(6) << reg.accumulator << " accumulator" << endl;
-	cout << setw(6) << reg.counter << setfill(' ') << " counter" << endl;
-	cout << setw(6) << reg.instruction << " instructionRegister" << endl;
-	cout << setw(6) << reg.opCode << " operationCode" << endl;
-	cout << setw(6) << reg.operand << " operand" << endl << endl;
-	cout << "MEMORIA:" << endl << endl;
-
-	cout << setw(2) << "";
-	for (int i = 0; i < 10; i++)
-		cout << setw(7) << i;
-	cout << endl << endl;
-
-	for (int row = 0; row < 10; row++) {
-		cout << setw(2) << row * 10;
-		for (int col = 0; col < 10; col++) {
-			cout << setw(7) << memory[(row * 10) + col];
+void Simpletron::dumpMemory() const {
+	cout << "Memory\n       0     1     2     3     4     5     6     7     8     9" << endl;
+	for (int i = 0; i < 100; ++i){
+		if (i % 10 == 0){
+			if (i == 0)
+				cout << " ";			
+			cout << noshowpos << i << " ";
 		}
-		cout << endl;
+		cout << showpos << setfill('0') << setw(5) << internal << memory[i] << " ";
+		if ((i + 1) % 10 == 0) 
+			cout << endl;
 	}
+}
 
+void Simpletron::dump() const {
+	dumpRegisters();
+	dumpMemory();
 }
 
 
@@ -132,7 +118,7 @@ bool Simpletron::opRead(const short operand) {
 }
 
 bool Simpletron::opWrite(const short operand) {
-	cout << memory[operand];
+	cout << memory[operand] << endl;
 	return true;
 }
 
