@@ -1,7 +1,7 @@
 // Simpletron.cpp : Este arquivo contém a função 'main'. A execução do programa começa e termina ali.
 //
 #include "Simpletron.h"
-
+#include <fstream>
 
 
 void Simpletron::load(const vector<short> program) {
@@ -32,11 +32,11 @@ void Simpletron::execute() {
 }
 
 void Simpletron::run(const vector<short> program) {
-	cout << "Loading program..." << endl;
+	cout << "Loading program into memory..." << endl;
 	load(program);
 	cout << "Running..." << endl;
 	execute();
-	cout << endl;
+	cout << endl << "*** Program finished ***" << endl;
 	dump();
 }
 
@@ -97,6 +97,17 @@ void Simpletron::dumpMemory() const {
 	}
 }
 
+void Simpletron::printInteractiveMenu() const {
+	cout << "*** ------------------------------------------------------------------- ***" << endl
+		<< "***                      Welcome to Simpletron!                         ***" << endl
+		<< "*** ------------------------------------------------------------------- ***" << endl
+		<< "*** Please enter your program one instruction (or data word) at a time. ***" << endl
+		<< "*** I will type the location number and a question mark(?).             ***" << endl
+		<< "*** You then type the word for that location.                           ***" << endl
+		<< "*** Type the sentinel -99999 to stop entering your program.             ***" << endl
+		<< "*** ------------------------------------------------------------------- ***" << endl;
+}
+
 void Simpletron::dump() const {
 	dumpRegisters();
 	dumpMemory();
@@ -118,7 +129,7 @@ bool Simpletron::opRead(const short operand) {
 }
 
 bool Simpletron::opWrite(const short operand) {
-	cout << memory[operand] << endl;
+	cout << setw(5) << setfill('0') << showpos << internal << memory[operand] << endl;
 	return true;
 }
 
@@ -172,4 +183,35 @@ bool Simpletron::opBranchZero(const short operand) {
 bool Simpletron::opHalt(const short memPosition) {
 	reg.counter = MEM_SIZE - 1;
 	return false;
+}
+
+
+vector<short> Simpletron::readProgram() {
+	vector<short> *program = new vector<short>();
+	
+	printInteractiveMenu();
+	short i = 0;
+	short instruction;
+	do {
+		cout << "   " << setw(4) << setfill('0') << noshowpos << i << " ? ";
+		cin >> instruction;
+		if (instruction != -9999) {
+			program->push_back(instruction);
+			i++;
+		}		
+	} while (instruction != -9999);
+	return (*program);
+}
+
+
+vector<short> Simpletron::readFromFile(string fileName) {
+	vector<short> *program = new vector<short>();
+
+	ifstream file(fileName);
+	short instruction;
+	while (file >> instruction){
+		program->push_back(instruction);
+	}
+	file.close();
+	return (*program);
 }

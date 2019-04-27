@@ -54,9 +54,10 @@ private:
 
 	void load(const vector<short> program);
 	void reset();
-	void execute();
+	void execute();	
 	void dumpRegisters() const;
 	void dumpMemory() const;
+	void printInteractiveMenu() const;
 
 public:
 
@@ -78,5 +79,7 @@ public:
 	bool parse(const vector<short> program);
 	void dump() const;
 	void run(const vector<short> program);
+	vector<short> readProgram();
+	vector<short> readFromFile(std::string fileName);
 };
 
