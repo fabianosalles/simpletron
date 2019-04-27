@@ -2,7 +2,9 @@
 
 A Simpletron Machine Language (SML) interpreter implementation in C++ as proposed by Deitel's book "C++ How to Program 3th edittion".
 
-## Language 
+![Alt text](screenshot/running.png "Running a program in the simpletron")
+
+## The Simpletron Machine Language 
 
 The simpletron machine langua contains a few instructions
 
@@ -33,5 +35,5 @@ I've discovered this code in one old backup disk and I decided to make some impr
  - [ ] Add support to g++ and linux
  
  ## Building
- 
- 
+
+The code is tested, by now, only in Visual Studio 2017 Community Edition 
