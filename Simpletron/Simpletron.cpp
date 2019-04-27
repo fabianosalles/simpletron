@@ -207,7 +207,7 @@ vector<short> Simpletron::readProgram() {
 vector<short> Simpletron::readFromFile(string fileName) {
 	vector<short> *program = new vector<short>();
 
-	ifstream file(fileName);
+	ifstream file(fileName, ifstream::in);
 	short instruction;
 	while (file >> instruction){
 		program->push_back(instruction);
