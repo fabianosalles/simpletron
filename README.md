@@ -4,9 +4,10 @@ A Simpletron Machine Language (SML) interpreter implementation in C++ as propose
 
 ![Alt text](screenshot/running.png "Running a program in the simpletron")
 
+
 ## The Simpletron Machine Language 
 
-The simpletron machine langua contains a few instructions
+The simpletron machine language contains a few instructions
 
 | CODE | NAME       | DESCRIPTION                                | 
 ------ |------------|------------------------------------------- |
