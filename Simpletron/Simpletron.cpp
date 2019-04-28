@@ -183,12 +183,11 @@ bool Simpletron::opHalt() {
 }
 
 
-vector<short> Simpletron::readProgram() {
-	vector<short> *program = new vector<short>();
-	
+vector<short> *Simpletron::readProgram() {	
 	printInteractiveMenu();
 	short i = 0;
 	short instruction;
+	vector<short> *program = new vector<short>();
 	do {
 		cout << "   " << setw(4) << setfill('0') << noshowpos << i << " ? ";
 		cin >> instruction;
@@ -197,18 +196,23 @@ vector<short> Simpletron::readProgram() {
 			i++;
 		}		
 	} while (instruction != -9999);
-	return (*program);
+	return program;
 }
 
 
-vector<short> Simpletron::readFromFile(string fileName) {
-	vector<short> *program = new vector<short>();
+vector<short> *Simpletron::readFromFile(string fileName) {
 
 	ifstream file(fileName, ifstream::in);
+	if (!file) {
+		cout << "Could not open file '" << fileName << "'" << endl;
+		return nullptr;
+	}
+
+	vector<short> *program = new vector<short>;
 	short instruction;
 	while (file >> instruction){
 		program->push_back(instruction);
 	}
 	file.close();
-	return (*program);
+	return program;
 }

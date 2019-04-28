@@ -79,7 +79,7 @@ public:
 	bool parse(const vector<short> program);
 	void dump() const;
 	void run(const vector<short> program);
-	vector<short> readProgram();
-	vector<short> readFromFile(std::string fileName);
+	vector<short> *readProgram();
+	vector<short> *readFromFile(std::string fileName);
 };
 
