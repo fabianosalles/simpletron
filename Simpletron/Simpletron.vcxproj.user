@@ -3,6 +3,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>C:\dev\cpp\simpletron\samples\multiply.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>C:\dev\cpp\simpletron\samples\divide.txt</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

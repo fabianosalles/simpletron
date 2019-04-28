@@ -151,6 +151,10 @@ bool Simpletron::opSubtract() {
 }
 
 bool Simpletron::opDivide() {
+	if (memory[reg.operand] == 0) {
+		cerr << "ERROR: Attempt to divide by zero at address " << reg.operand << endl;
+		return false;
+	}
 	reg.accumulator /= memory[reg.operand];
 	return true;
 }
