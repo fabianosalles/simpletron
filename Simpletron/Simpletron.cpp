@@ -19,14 +19,10 @@ void Simpletron::execute() {
 		//2. decode
 		reg.opCode = reg.instruction / 100;
 		reg.operand = reg.instruction % 100;
-		bool(Simpletron::*handler)(short) = handlers[reg.opCode];
+		bool(Simpletron::*handler)() = handlers[reg.opCode];
 
 		//3. execute
-		if ((this->*handler)(reg.operand)) {
-
-
-		}
-		else
+		if (!(this->*handler)())
 			break;
 	}
 }
@@ -123,65 +119,66 @@ void Simpletron::reset() {
 }
 
 
-bool Simpletron::opRead(const short operand) {
-	cin >> memory[operand];
+bool Simpletron::opRead() {
+	cout << " ? ";
+	cin >> memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opWrite(const short operand) {
-	cout << setw(5) << setfill('0') << showpos << internal << memory[operand] << endl;
+bool Simpletron::opWrite() {
+	cout << setw(5) << setfill('0') << showpos << internal << memory[reg.operand] << endl;
 	return true;
 }
 
-bool Simpletron::opLoad(const short operand) {
-	reg.accumulator = memory[operand];
+bool Simpletron::opLoad() {
+	reg.accumulator = memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opStore(const short operand) {
-	memory[operand] = reg.accumulator;
+bool Simpletron::opStore() {
+	memory[reg.operand] = reg.accumulator;
 	return true;
 }
 
-bool Simpletron::opAdd(const short operand) {
-	reg.accumulator += memory[operand];
+bool Simpletron::opAdd() {
+	reg.accumulator += memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opSubtract(const short operand) {
-	reg.accumulator -= memory[operand];
+bool Simpletron::opSubtract() {
+	reg.accumulator -= memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opDivide(const short operand) {
-	reg.accumulator /= memory[operand];
+bool Simpletron::opDivide() {
+	reg.accumulator /= memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opMultiply(const short operand) {
-	reg.accumulator *= memory[operand];
+bool Simpletron::opMultiply() {
+	reg.accumulator *= memory[reg.operand];
 	return true;
 }
 
-bool Simpletron::opBranch(const short operand) {
-	reg.counter = operand;
+bool Simpletron::opBranch() {
+	reg.counter = reg.operand;
 	return true;
 }
 
-bool Simpletron::opBranchNeg(const short operand) {
+bool Simpletron::opBranchNeg() {
 	if (reg.accumulator < 0)
-		reg.counter = operand;
+		reg.counter = reg.operand;
 	return true;
 }
 
-bool Simpletron::opBranchZero(const short operand) {
+bool Simpletron::opBranchZero() {
 	if (reg.accumulator == 0)
-		reg.counter = operand;
+		reg.counter = reg.operand;
 	return true;
 }
 
-bool Simpletron::opHalt(const short memPosition) {
-	reg.counter = MEM_SIZE - 1;
+bool Simpletron::opHalt() {
+	reg.counter = MEM_SIZE;
 	return false;
 }
 

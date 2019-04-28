@@ -23,7 +23,7 @@ class Simpletron {
 private:
 	int memory[MEM_SIZE] = { 0 };
 	regs reg = { 0 };
-	map<short, bool(Simpletron::*)(short)> handlers = {
+	map<short, bool(Simpletron::*)()> handlers = {
 		{OpCode::READ, &Simpletron::opRead},
 		{OpCode::READ, &Simpletron::opRead},
 		{OpCode::WRITE, &Simpletron::opWrite},
@@ -39,18 +39,18 @@ private:
 		{OpCode::HALT, &Simpletron::opHalt}
 	};
 	
-	bool opRead(const short operand);
-	bool opWrite(const short operand);	
-	bool opLoad(const short operand);
-	bool opStore(const short operand);
-	bool opAdd(const short operand);
-	bool opSubtract(const short operand);
-	bool opDivide(const short operand);
-	bool opMultiply(const short operand);
-	bool opBranch(const short operand);
-	bool opBranchNeg(const short operand);
-	bool opBranchZero(const short operand);
-	bool opHalt(const short memPosition);		
+	bool opRead();
+	bool opWrite();	
+	bool opLoad();
+	bool opStore();
+	bool opAdd();
+	bool opSubtract();
+	bool opDivide();
+	bool opMultiply();
+	bool opBranch();
+	bool opBranchNeg();
+	bool opBranchZero();
+	bool opHalt();		
 
 	void load(const vector<short> program);
 	void reset();
