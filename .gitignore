@@ -1,3 +1,15 @@
-debug/
-Debug/
+# Pastas de Build do CMake e CLion
+cmake-build-debug/
+cmake-build-release/
+build/
+
+# IDEs e editores
 .vs/
+.idea/
+*.user
+
+# Binários locais (caso compile fora da pasta build por engano)
+*.o
+*.a
+*.out
+bin/

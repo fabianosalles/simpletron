@@ -37,4 +37,34 @@ I've discovered this code in one old backup disk and I decided to make some impr
  
  ## Building
 
-The code is tested, by now, only in Visual Studio 2017 Community Edition 
+The project uses CMake and requires CMake 3.20 or newer, in addition to a C++17-compatible compiler.
+
+From the project root, configure and build the project in a separate `build` directory:
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+The executable is generated in `build/bin/`. On Windows with a multi-configuration generator, use:
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Release
+```
+
+The resulting executable is `build/bin/simpletron.exe` on Windows or `build/bin/simpletron` on Linux and macOS.
+
+To run a program saved in a file:
+
+```bash
+./build/bin/simpletron samples/add.txt
+```
+
+On Windows PowerShell, use:
+
+```powershell
+.\build\bin\simpletron.exe samples\add.txt
+```
+
+If no input file is provided, the interpreter starts in interactive mode.
