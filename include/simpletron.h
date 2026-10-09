@@ -4,41 +4,63 @@
 #include <map>
 #include <vector>
 #include <cstring>
+#include <stdint.h>
 
 
 using namespace std;
 
+
 #define MEM_SIZE 100
 
-struct regs {
-	int counter;
-	int instruction;
-	short opCode;
-	short operand;
-	int accumulator;
+
+enum class State: uint8_t {
+	LOADING,
+	READY,
+	RUNNING,	
+	HALTED,
+	ERROR
+};
+
+enum class ErrorCode : uint8_t {
+	NONE = 0,
+	INVALID_INSTRUCTION = 1,
+	DIVISION_BY_ZERO = 2
+};
+
+enum class OpCode : uint8_t {
+	NOOP = 0,
+	READ = 10,
+	WRITE = 11,
+	LOAD = 20,
+	STORE = 21,
+	ADD = 30,
+	SUBTRACT = 31,
+	DIVIDE = 32,
+	MULTIPLY = 33,
+	BRANCH = 40,
+	BRANCHNEG = 41,
+	BRACHZERO = 42,
+	HALT = 43
+};
+
+struct Registers {
+	uint16_t counter = 0;
+	int16_t instruction = 0;
+	OpCode opCode = OpCode::HALT;
+	uint16_t operand = 0;
+	int16_t accumulator = 0;
 };
 
 
 class Simpletron {
 private:
+	using Handler = bool (Simpletron::*)();
+
 	int memory[MEM_SIZE] = { 0 };
-	regs reg = { 0 };
-	map<short, bool(Simpletron::*)()> handlers = {
-		{OpCode::READ, &Simpletron::opRead},
-		{OpCode::READ, &Simpletron::opRead},
-		{OpCode::WRITE, &Simpletron::opWrite},
-		{OpCode::LOAD, &Simpletron::opLoad},
-		{OpCode::STORE, &Simpletron::opStore},
-		{OpCode::ADD, &Simpletron::opAdd},
-		{OpCode::SUBTRACT, &Simpletron::opSubtract},
-		{OpCode::DIVIDE, &Simpletron::opDivide},
-		{OpCode::MULTIPLY, &Simpletron::opMultiply},
-		{OpCode::BRANCH, &Simpletron::opBranch},
-		{OpCode::BRANCHNEG, &Simpletron::opBranchNeg},
-		{OpCode::BRACHZERO, &Simpletron::opBranchZero},
-		{OpCode::HALT, &Simpletron::opHalt}
-	};
-	
+	Registers regs = { 0 };
+	State state = State::READY;
+	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::NONE);
+		
 	bool opRead();
 	bool opWrite();	
 	bool opLoad();
@@ -58,28 +80,38 @@ private:
 	void dumpRegisters() const;
 	void dumpMemory() const;
 	void printInteractiveMenu() const;
+	bool executeInstruction();
+	bool isValidOpCode(OpCode op) noexcept;
 
-public:
-
-	enum OpCode {	
-		READ = 10,
-		WRITE = 11,
-		LOAD = 20,
-		STORE = 21,
-		ADD = 30,
-		SUBTRACT = 31,
-		DIVIDE = 32,
-		MULTIPLY = 33,
-		BRANCH = 40,
-		BRANCHNEG = 41,
-		BRACHZERO = 42,
-		HALT = 43
-	};	
-	
-	bool parse(const vector<short> program);
+public:		
+	bool parse(const vector<short>& program);
 	void dump() const;
 	void run(const vector<short>& program);
 	vector<short> readProgram() const;
 	static vector<short> readFromFile(const std::string& fileName);
+
+	void raiseError(ErrorCode code) noexcept {
+		state = State::ERROR;
+		errorCode = static_cast<uint8_t>(code);
+	}
+
+	[[nodiscard]] const Registers& getRegisters() const noexcept { return regs; }
+	[[nodiscard]] const State& getState() const noexcept { return state; }
+	[[nodiscard]] bool isHalted() const noexcept { return state == State::HALTED; }
+	[[nodiscard]] bool hasError() const noexcept { return state == State::ERROR; }
+	
 };
 
+/**
+ * @brief Constructs a 4-digit encoded Simpletron instruction word.
+ *
+ * Combines an operation code (opCode) and a target memory address (operand)
+ * into a single decimal machine instruction (e.g., OpCode 40 and operand 10 result in 4010).
+ *
+ * @param opCode The operation code representing the instruction to execute.
+ * @param operand The target memory address (ranging from 0 to 99).
+ * @return int16_t The fully encoded instruction ready to be stored in VM memory.
+ */
+[[nodiscard]] constexpr int16_t makeInstruction(OpCode opCode, uint16_t operand = 0) noexcept {
+	return static_cast<int16_t>(static_cast<uint8_t>(opCode) * 100 + (operand % 100));
+}

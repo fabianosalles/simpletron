@@ -33,38 +33,46 @@ I've discovered this code in one old backup disk and I decided to make some impr
  - [ ] Add runtime error checks
  - [ ] Add mnenomic support to the language
  - [ ] Implement a proper parser
- - [ ] Add support to g++ and linux
+ - [x] Add support to g++ and linux ( acheived via CMake )
  
- ## Building
+ 
+## Building
 
-The project uses CMake and requires CMake 3.20 or newer, in addition to a C++17-compatible compiler.
-
-From the project root, configure and build the project in a separate `build` directory:
+Configure and compile the project using CMake. Make sure you have CMake installed on your system.
 
 ```bash
-cmake -S . -B build
-cmake --build build
-```
-
-The executable is generated in `build/bin/`. On Windows with a multi-configuration generator, use:
-
-```powershell
 cmake -S . -B build
 cmake --build build --config Release
 ```
 
-The resulting executable is `build/bin/simpletron.exe` on Windows or `build/bin/simpletron` on Linux and macOS.
+## Running
+Execute the interpreter binary with a sample file as an argument. The sample files are located in the `samples` directory.
 
-To run a program saved in a file:
 
+### Linux / macOS
 ```bash
 ./build/bin/simpletron samples/add.txt
 ```
 
-On Windows PowerShell, use:
+### Windows (PowerShell)
 
-```powershell
+```PowerShell
 .\build\bin\simpletron.exe samples\add.txt
 ```
+## Running Tests
+To execute the unit tests, first build the project with the `-DBUILD_TESTS=ON` option:
+```bash
+ctest --test-dir build --output-on-failure -C Release
+```
+Alternatively, run the tests binary directly:
 
-If no input file is provided, the interpreter starts in interactive mode.
+### Linux / macOS:
+
+```bash
+./build/bin/simpletron_tests
+```
+### Windows (PowerShell):
+
+```PowerShell
+.\build\bin\simpletron_tests.exe
+```

@@ -3,28 +3,48 @@
 
 
 void Simpletron::load(const vector<short>& program) {
+	state = State::LOADING;	
 	for (auto i = 0; i < program.size(); i++)
 		memory[i] = program[i];
+	state = State::READY;
 }
 
 void Simpletron::execute() {
-	reset();
-	while (reg.counter < MEM_SIZE) {
+	state = State::RUNNING;
+	while ( state == State::RUNNING && regs.counter < MEM_SIZE) {
 
 		//1. fetch
-		reg.instruction = memory[reg.counter];
+		regs.instruction = memory[regs.counter++];		
 
 		//2. decode
-		reg.opCode = static_cast<short>(reg.instruction / 100);
-		reg.operand = static_cast<short>(reg.instruction % 100);
-		bool(Simpletron::*handler)() = handlers[reg.opCode];
+		regs.opCode = static_cast<OpCode>(regs.instruction / 100);
+		regs.operand = static_cast<uint16_t>(regs.instruction % 100);
 
-		//3. execute
-		if (!(this->*handler)())
+		if (!executeInstruction()) {
 			break;
-
-		reg.counter++;
+		}
 	}
+}
+
+bool Simpletron::executeInstruction() {
+    switch (regs.opCode) {
+		case OpCode::NOOP:      return true;
+        case OpCode::READ:      return opRead();
+        case OpCode::WRITE:     return opWrite();
+        case OpCode::LOAD:      return opLoad();
+        case OpCode::STORE:     return opStore();
+        case OpCode::ADD:       return opAdd();
+        case OpCode::SUBTRACT:  return opSubtract();
+        case OpCode::DIVIDE:    return opDivide();
+        case OpCode::MULTIPLY:  return opMultiply();
+        case OpCode::BRANCH:    return opBranch();
+        case OpCode::BRANCHNEG: return opBranchNeg();
+        case OpCode::BRACHZERO: return opBranchZero();
+        case OpCode::HALT:      return opHalt();
+        default:
+            raiseError(ErrorCode::INVALID_INSTRUCTION);
+            return false;
+    }
 }
 
 void Simpletron::run(const vector<short>& program) {
@@ -36,47 +56,60 @@ void Simpletron::run(const vector<short>& program) {
 	dump();
 }
 
-bool Simpletron::parse(const vector<short> program) {
+bool Simpletron::isValidOpCode(OpCode op) noexcept {
+	switch (op) {
+	case OpCode::READ:
+	case OpCode::WRITE:
+	case OpCode::LOAD:
+	case OpCode::STORE:
+	case OpCode::ADD:
+	case OpCode::SUBTRACT:
+	case OpCode::DIVIDE:
+	case OpCode::MULTIPLY:
+	case OpCode::BRANCH:
+	case OpCode::BRANCHNEG:
+	case OpCode::BRACHZERO:
+	case OpCode::HALT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool Simpletron::parse(const vector<short>& program) {
 	cout << "Parsing... " << endl;
 	if (program.size() > MEM_SIZE) {
 		cout << "Program too large to fit in memory." << endl;
 		return false;
 	}
+		
+	for (size_t i = 0; i < program.size(); i++) {
+		const int16_t instruction = program[i];
+		const auto opCode = static_cast<OpCode>(instruction / 100);
+		const auto operand = static_cast<uint16_t>(instruction % 100);
 
-	char opCode, operand;
-	short instruction;
-
-	for (char i = 0; i < (char)program.size(); i++) {
-		instruction = program[i];
-		opCode = instruction / 100;
-		operand = instruction % 100;
-
-		if (instruction == 0) {
-			cout << "Invalid instruction." << endl;
+		if (operand >= MEM_SIZE) {
+			std::cout << "Invalid operand address at index " << i << ": " << operand << "\n";
 			return false;
 		}
 
-		auto handler = handlers.find(opCode);
-		if (handler == handlers.end()) {
+		if (!isValidOpCode(opCode)) {
 			cout << "Invalid instruction : " << instruction << endl;
 			return false;
-		}
-		else if (handlers[opCode] == nullptr) {
-			cout << "Instruction not implemented yet: " << (int)opCode << endl;
-			return false;
-		}
+		}		
 	}
+
 	cout << "Program is valid." << endl;;
 	return true;
 }
 
 void Simpletron::dumpRegisters() const {
 	cout << "Registers:" << endl;
-	cout << "  accumulator         : " << showpos << setfill('0') << setw(5) << internal << reg.accumulator << endl;
-	cout << "  instructionCounter  : " << noshowpos << setfill(' ') << setw(5) << internal << reg.counter << endl;
-	cout << "  instructionRegister : " << showpos << setfill('0') << setw(5) << internal << reg.instruction << endl;
-	cout << "  operationCode       : " << noshowpos << setfill(' ') << setw(5) << internal << reg.opCode << endl;
-	cout << "  operand             : " << noshowpos << setfill(' ') << setw(5) << internal << reg.operand << endl;	
+	cout << "  accumulator         : " << showpos << setfill('0') << setw(5) << internal << regs.accumulator << endl;
+	cout << "  instructionCounter  : " << noshowpos << setfill(' ') << setw(5) << internal << regs.counter << endl;
+	cout << "  instructionRegister : " << showpos << setfill('0') << setw(5) << internal << regs.instruction << endl;
+	cout << "  operationCode       : " << noshowpos << setfill(' ') << setw(5) << internal << static_cast<uint8_t>(regs.opCode) << endl;
+	cout << "  operand             : " << noshowpos << setfill(' ') << setw(5) << internal << regs.operand << endl;	
 }
 
 void Simpletron::dumpMemory() const {
@@ -94,14 +127,14 @@ void Simpletron::dumpMemory() const {
 }
 
 void Simpletron::printInteractiveMenu() const {
-	cout << "*** ------------------------------------------------------------------- ***" << endl
-		<< "***                      Welcome to Simpletron!                         ***" << endl
-		<< "*** ------------------------------------------------------------------- ***" << endl
-		<< "*** Please enter your program one instruction (or data word) at a time. ***" << endl
-		<< "*** I will type the location number and a question mark(?).             ***" << endl
-		<< "*** You then type the word for that location.                           ***" << endl
-		<< "*** Type the sentinel -99999 to stop entering your program.             ***" << endl
-		<< "*** ------------------------------------------------------------------- ***" << endl;
+	cout <<"* -------------------------------------------------------------------- *" << endl
+		<< "|                      Welcome to Simpletron!                          |" << endl
+		<< "* -------------------------------------------------------------------- *" << endl
+		<< "| Please enter your program one instruction (or data word) at a time.  |" << endl
+		<< "| I will type the location number and a question mark(?).              |" << endl
+		<< "| You then type the word for that location.                            |" << endl
+		<< "| Type the sentinel -9999 to stop entering your program.               | " << endl
+		<< "* -------------------------------------------------------------------- *" << endl;
 }
 
 void Simpletron::dump() const {
@@ -111,79 +144,81 @@ void Simpletron::dump() const {
 
 
 void Simpletron::reset() {
-	reg.accumulator = 0;
-	reg.counter = 0;
-	reg.instruction = 0;
-	reg.operand = 0;
-	reg.opCode = 0;
+	regs.accumulator = 0;
+	regs.counter = 0;
+	regs.instruction = 0;
+	regs.operand = 0;
+	regs.opCode = OpCode::HALT;
+	state = State::READY;
 }
 
 
 bool Simpletron::opRead() {
 	cout << " ? ";
-	cin >> memory[reg.operand];
+	cin >> memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opWrite() {
-	cout << setw(5) << setfill('0') << showpos << internal << memory[reg.operand] << endl;
+	cout << setw(5) << setfill('0') << showpos << internal << memory[regs.operand] << endl;
 	return true;
 }
 
 bool Simpletron::opLoad() {
-	reg.accumulator = memory[reg.operand];
+	regs.accumulator = memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opStore() {
-	memory[reg.operand] = reg.accumulator;
+	memory[regs.operand] = regs.accumulator;
 	return true;
 }
 
 bool Simpletron::opAdd() {
-	reg.accumulator += memory[reg.operand];
+	regs.accumulator += memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opSubtract() {
-	reg.accumulator -= memory[reg.operand];
+	regs.accumulator -= memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opDivide() {
-	if (memory[reg.operand] == 0) {
-		cerr << "ERROR: Attempt to divide by zero at address " << reg.operand << endl;
+	if (memory[regs.operand] == 0) {
+		raiseError(ErrorCode::DIVISION_BY_ZERO);		
 		return false;
 	}
-	reg.accumulator /= memory[reg.operand];
+
+	regs.accumulator /= memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opMultiply() {
-	reg.accumulator *= memory[reg.operand];
+	regs.accumulator *= memory[regs.operand];
 	return true;
 }
 
 bool Simpletron::opBranch() {
-	reg.counter = reg.operand;
+	regs.counter = regs.operand;
 	return true;
 }
 
 bool Simpletron::opBranchNeg() {
-	if (reg.accumulator < 0)
-		reg.counter = reg.operand;
+	if (regs.accumulator < 0)
+		regs.counter = regs.operand;
 	return true;
 }
 
 bool Simpletron::opBranchZero() {
-	if (reg.accumulator == 0)
-		reg.counter = reg.operand;
+	if (regs.accumulator == 0)
+		regs.counter = regs.operand;
 	return true;
 }
 
-bool Simpletron::opHalt() {
-	reg.counter = MEM_SIZE;
-	return false;
+bool Simpletron::opHalt() {	
+	state = State::HALTED;
+	return true;
 }
 
 
