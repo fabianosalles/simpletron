@@ -5,7 +5,8 @@
 #include <vector>
 #include <cstring>
 #include <stdint.h>
-
+#include <span>
+#include <optional>
 
 using namespace std;
 
@@ -22,9 +23,10 @@ enum class State: uint8_t {
 };
 
 enum class ErrorCode : uint8_t {
-	NONE = 0,
-	INVALID_INSTRUCTION = 1,
-	DIVISION_BY_ZERO = 2
+	SUCCESS = 0,
+	INVALID_INSTRUCTION = 1,	
+	DIVISION_BY_ZERO = 2,
+	NOT_ENOUGTH_MEMORY = 3,
 };
 
 enum class OpCode : uint8_t {
@@ -56,10 +58,10 @@ class Simpletron {
 private:
 	using Handler = bool (Simpletron::*)();
 
-	int memory[MEM_SIZE] = { 0 };
+	int16_t memory[MEM_SIZE] = { 0 };
 	Registers regs = { 0 };
 	State state = State::READY;
-	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::NONE);
+	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::SUCCESS);
 		
 	bool opRead();
 	bool opWrite();	
@@ -74,13 +76,13 @@ private:
 	bool opBranchZero();
 	bool opHalt();		
 
-	void load(const vector<short>& program);
+	ErrorCode load(const vector<short>& program);
+	bool executeInstruction();
 	void reset();
-	void execute();	
+	void execute();
 	void dumpRegisters() const;
 	void dumpMemory() const;
-	void printInteractiveMenu() const;
-	bool executeInstruction();
+	void printInteractiveMenu() const;	
 	bool isValidOpCode(OpCode op) noexcept;
 
 public:		
@@ -90,11 +92,19 @@ public:
 	vector<short> readProgram() const;
 	static vector<short> readFromFile(const std::string& fileName);
 
-	void raiseError(ErrorCode code) noexcept {
+	ErrorCode raiseError(ErrorCode code) noexcept {
 		state = State::ERROR;
 		errorCode = static_cast<uint8_t>(code);
+		return code;
 	}
 
+	/**
+	* @bref Retrieves a readonly view of the Simpletron's memory.
+	*/
+	[[nodiscard]] span<const int16_t> getMemory() const noexcept {
+		return span<const int16_t>(memory, MEM_SIZE);
+	}
+	
 	[[nodiscard]] const Registers& getRegisters() const noexcept { return regs; }
 	[[nodiscard]] const State& getState() const noexcept { return state; }
 	[[nodiscard]] bool isHalted() const noexcept { return state == State::HALTED; }

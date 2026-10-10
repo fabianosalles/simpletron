@@ -2,12 +2,19 @@
 #include <fstream>
 
 
-void Simpletron::load(const vector<short>& program) {
-	state = State::LOADING;	
+ErrorCode 
+Simpletron::load(const vector<short>& program) {
+
+	if (program.size() > MEM_SIZE)
+		return raiseError(ErrorCode::NOT_ENOUGTH_MEMORY);
+
+	state = State::LOADING;
 	for (auto i = 0; i < program.size(); i++)
 		memory[i] = program[i];
 	state = State::READY;
+	return ErrorCode::SUCCESS;
 }
+
 
 void Simpletron::execute() {
 	state = State::RUNNING;
@@ -48,9 +55,24 @@ bool Simpletron::executeInstruction() {
 }
 
 void Simpletron::run(const vector<short>& program) {
-	cout << "Loading program into memory..." << endl;
-	load(program);
+	cout << "Loading program into memory... ";
+	switch (load(program) ) {
+		case ErrorCode::NOT_ENOUGTH_MEMORY:
+			cout << "Error: Not enough memory to load program." << endl;
+			return;
+		case ErrorCode::INVALID_INSTRUCTION:
+			cout << "Error: Invalid instruction in program." << endl;
+			return;
+		case ErrorCode::SUCCESS:
+			cout << "Success." << endl;
+			break;
+		default:
+			cout << "Error." << endl;
+			return;
+	}
+
 	cout << "Running..." << endl;
+
 	execute();
 	cout << endl << "*** Program finished ***" << endl;
 	dump();
@@ -58,6 +80,7 @@ void Simpletron::run(const vector<short>& program) {
 
 bool Simpletron::isValidOpCode(OpCode op) noexcept {
 	switch (op) {
+	case OpCode::NOOP:
 	case OpCode::READ:
 	case OpCode::WRITE:
 	case OpCode::LOAD:
@@ -154,8 +177,13 @@ void Simpletron::reset() {
 
 
 bool Simpletron::opRead() {
+	int value = 0;
 	cout << " ? ";
-	cin >> memory[regs.operand];
+	if (!(cin >> value)) {
+		cin.clear();
+		return false;
+	}
+	memory[regs.operand] = static_cast<int16_t>(value);
 	return true;
 }
 

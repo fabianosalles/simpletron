@@ -10,36 +10,36 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # puts simpletronin a library so it can be used by other targets
 add_library(simpletron_core
     src/simpletron.cpp
-)
+ )
 target_include_directories(simpletron_core PUBLIC include)
 
 # makes the simpletron executable and links it to the simpletron_core library
 add_executable(simpletron
-    src/main.cpp
-)
+    src/main.cpp )
 target_link_libraries(simpletron PRIVATE simpletron_core)
 
 
 # 3. GTest configuration
-include(CTest)
-if(BUILD_TESTING)
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/refs/heads/main.zip
-    )
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+)
+# for windows: prevents runtime CRT conflicts
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-    add_executable(simpletron_tests
-        tests/test_simpletron.cpp
-    )
-    target_link_libraries(simpletron_tests PRIVATE
-        simpletron_core
-        GTest::gtest_main
-    )
+enable_testing()
 
-    include(GoogleTest)
-    gtest_discover_tests(simpletron_tests)
-endif()
+add_executable(simpletron_tests
+    tests/test_simpletron.cpp
+    tests/test_opcodes.cpp
+)
+
+target_link_libraries(simpletron_tests PRIVATE
+    simpletron_core
+    GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(simpletron_tests)
