@@ -14,6 +14,7 @@ The simpletron machine language contains a few instructions
 
 | CODE | NAME       | DESCRIPTION                                | 
 ------ |------------|------------------------------------------- |
+| 00   | noop       | consumes 1 CPU cycle but doesn't do anything 
 | 10   | read       | read a word from stdin into a specific location in memory       
 | 11   | write      | write a word from a specific location in memory to the terminal    
 | 20   | load       | load a word from a specific location in memory into the accumulator 
