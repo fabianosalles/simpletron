@@ -1,8 +1,8 @@
 # Simpletron Machine Language Interpreter
 
-A Simpletron Machine Language (SML) interpreter implementation in C++ as proposed by Deitel's book "C++ How to Program 3rd edition".
+A Simpletron Machine Language (SML) interpreter implementation in C++ as proposed by Deitel's book "C++ How to Program, 3rd edition".
 
-[![CMake Build & Test](https://github.com/<SEU_USUARIO>/<SEU_REPOSITORIO>/actions/workflows/cmake-tests.yml/badge.svg)](https://github.com/<SEU_USUARIO>/<SEU_REPOSITORIO>/actions/workflows/cmake-tests.yml)
+[![CMake Build & Test](https://github.com/fabianosalles/simpletron/actions/workflows/cmake-tests.yml/badge.svg?branch=master)](https://github.com/fabianosalles/simpletron/actions/workflows/cmake-tests.yml)
 
 ![Alt text](screenshot/running.png "Running a program in the simpletron")
 
