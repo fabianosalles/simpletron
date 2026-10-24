@@ -10,12 +10,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # puts simpletronin a library so it can be used by other targets
 add_library(simpletron_core
     src/simpletron.cpp
- )
+    "include/events.h")
 target_include_directories(simpletron_core PUBLIC include)
 
 # makes the simpletron executable and links it to the simpletron_core library
 add_executable(simpletron
-    src/main.cpp )
+    src/main.cpp  
+    "include/events.h")
 target_link_libraries(simpletron PRIVATE simpletron_core)
 
 
@@ -34,7 +35,8 @@ enable_testing()
 add_executable(simpletron_tests
     tests/test_simpletron.cpp
     tests/test_opcodes.cpp
-)
+    tests/test_events.cpp
+    "include/events.h")
 
 target_link_libraries(simpletron_tests PRIVATE
     simpletron_core
