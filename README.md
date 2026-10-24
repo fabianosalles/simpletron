@@ -34,9 +34,11 @@ This program was originally written as an academic exercise, so please be kind w
 I've discovered this code in one old backup disk, and I decided to make some improvements:
 
  - [ ] Add runtime error checks
- - [ ] Add mnemonic support to the language
+ - [ ] Add mnemonic support to the language 	
+ - [ ] Add debugging support (breakpoints, step-by-step execution, etc)	
  - [ ] Implement a proper parser
  - [x] Add support to g++ and linux ( acheived via CMake )
+ - [ ] Create a UI mode
  
  
 ## Building
