@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <span>
 #include <optional>
+#include <format>
+#include "events.h"
 
 using namespace std;
 
@@ -15,6 +17,7 @@ using namespace std;
 
 
 enum class State: uint8_t {
+	PARSING,
 	LOADING,
 	READY,
 	RUNNING,	
@@ -23,9 +26,13 @@ enum class State: uint8_t {
 };
 
 enum class ErrorCode : uint8_t {
-	SUCCESS = 0,
+	/* No error */
+	NONE = 0,
+
 	INVALID_INSTRUCTION = 1,	
+
 	DIVISION_BY_ZERO = 2,
+
 	NOT_ENOUGTH_MEMORY = 3,
 };
 
@@ -53,50 +60,32 @@ struct Registers {
 	int16_t accumulator = 0;
 };
 
+struct StateChangedEvent {
+	State oldState;
+	State newState;
+};
+
+struct ProgramLoadedEvent {
+	size_t instructionCount;
+};
+
+struct ExectionEvent {
+	ErrorCode errorCode;
+};
+
+
+
 
 class Simpletron {
-private:
-	using Handler = bool (Simpletron::*)();
-
-	int16_t memory[MEM_SIZE] = { 0 };
-	Registers regs = { 0 };
-	State state = State::READY;
-	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::SUCCESS);
-		
-	bool opRead();
-	bool opWrite();	
-	bool opLoad();
-	bool opStore();
-	bool opAdd();
-	bool opSubtract();
-	bool opDivide();
-	bool opMultiply();
-	bool opBranch();
-	bool opBranchNeg();
-	bool opBranchZero();
-	bool opHalt();		
-
-	ErrorCode load(const vector<short>& program);
-	bool executeInstruction();
-	void reset();
-	void execute();
-	void dumpRegisters() const;
-	void dumpMemory() const;
-	void printInteractiveMenu() const;	
-	bool isValidOpCode(OpCode op) noexcept;
-
-public:		
+public:
+	explicit Simpletron(EventBus& bus) noexcept : event_bus(bus){};	
 	bool parse(const vector<short>& program);
 	void dump() const;
-	void run(const vector<short>& program);
+	ErrorCode run(const vector<short>& program);
 	vector<short> readProgram() const;
 	static vector<short> readFromFile(const std::string& fileName);
 
-	ErrorCode raiseError(ErrorCode code) noexcept {
-		state = State::ERROR;
-		errorCode = static_cast<uint8_t>(code);
-		return code;
-	}
+	ErrorCode raiseError(ErrorCode code) noexcept;
 
 	/**
 	* @bref Retrieves a readonly view of the Simpletron's memory.
@@ -104,12 +93,48 @@ public:
 	[[nodiscard]] span<const int16_t> getMemory() const noexcept {
 		return span<const int16_t>(memory, MEM_SIZE);
 	}
-	
+
 	[[nodiscard]] const Registers& getRegisters() const noexcept { return regs; }
 	[[nodiscard]] const State& getState() const noexcept { return state; }
 	[[nodiscard]] bool isHalted() const noexcept { return state == State::HALTED; }
 	[[nodiscard]] bool hasError() const noexcept { return state == State::ERROR; }
-	
+
+private:
+	using OperationHandler = bool (Simpletron::*)();
+	EventBus& event_bus;
+
+	int16_t memory[MEM_SIZE] = { 0 };
+	Registers regs = { 0 };
+	State state = State::READY;
+	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::NONE);
+		
+	ErrorCode opRead();
+	ErrorCode opWrite();	
+	ErrorCode opLoad();
+	ErrorCode opStore();
+	ErrorCode opAdd();
+	ErrorCode opSubtract();
+	ErrorCode opDivide();
+	ErrorCode opMultiply();
+	ErrorCode opBranch();
+	ErrorCode opBranchNeg();
+	ErrorCode opBranchZero();
+	ErrorCode opHalt();	
+
+	ErrorCode load(const vector<short>& program);
+	ErrorCode executeInstruction();
+	void reset();
+	void execute();
+	void dumpRegisters() const;
+	void dumpMemory() const;
+	void printInteractiveMenu() const;	
+	bool isValidOpCode(OpCode op) noexcept;
+	void setState(State newState) noexcept;
+
+	void LogInfo(std::string message) { event_bus.publish(LogEvent{ LogLevel::INFO, message }); }
+	void LogError(std::string message) { event_bus.publish(LogEvent{ LogLevel::ERROR, message }); }
+	void LogDebug(std::string message) { event_bus.publish(LogEvent{ LogLevel::DEBUG, message }); }
+	void LogWarning(std::string message) { event_bus.publish(LogEvent{ LogLevel::WARNING, message }); }
 };
 
 /**

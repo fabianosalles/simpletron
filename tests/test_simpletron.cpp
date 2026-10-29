@@ -2,7 +2,8 @@
 #include "simpletron.h"
 
 TEST(SimpletronCore, RegistersAreZeroInitializedByDefault) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
     const auto& registers = core.getRegisters();    
 	const auto& state = core.getState();
 
@@ -15,25 +16,28 @@ TEST(SimpletronCore, RegistersAreZeroInitializedByDefault) {
 }
 
 TEST(SimpletronCore, NoopAdvancesCounterWithoutModifyingState) {
-    Simpletron core;
-
-    auto program = std::vector<short>{
+    EventBus bus;   
+    Simpletron core(bus);
+    
+    core.run(std::vector<short> {
         makeInstruction(OpCode::NOOP, 0),
         makeInstruction(OpCode::HALT, 0)
-    };
-
-    core.run(program);
+    });
 
     const auto& reg = core.getRegisters();
+	const auto& state = core.getState();
+    const auto& hasError = core.hasError();
 
-    EXPECT_EQ(core.getState(), State::HALTED);
-    EXPECT_FALSE(core.hasError());
+    EXPECT_EQ(state, State::HALTED);
+    EXPECT_FALSE(hasError);
     EXPECT_EQ(reg.accumulator, 0); 
     EXPECT_EQ(reg.counter, 2);     
 }
 
 TEST(SimpletronCore, BranchUnconditionalJumpsDirectlyToTarget) {
-	Simpletron core;	
+    EventBus bus;
+    Simpletron core(bus);
+
     auto program = vector<short>{
         makeInstruction(OpCode::BRANCH, 2),
 		makeInstruction(OpCode::LOAD, 99),  //if this instruction is executed, the test will fail

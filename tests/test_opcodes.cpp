@@ -28,7 +28,8 @@ private:
 // ==========================================
 
 TEST(SimpletronOpcodes, ReadStoresInputIntoMemory) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     std::cin.clear();
     std::stringstream input("42\n");
@@ -47,8 +48,10 @@ TEST(SimpletronOpcodes, ReadStoresInputIntoMemory) {
 }
 
 TEST(SimpletronOpcodes, WriteOutputsMemoryValue) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
     std::stringstream output;
+
     const std::vector<short> program = {
         makeInstruction(OpCode::WRITE, 2),
         makeInstruction(OpCode::HALT, 0),
@@ -71,7 +74,8 @@ TEST(SimpletronOpcodes, WriteOutputsMemoryValue) {
 // ==========================================
 
 TEST(SimpletronOpcodes, LoadTransfersMemoryValueToAccumulator) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // Program:
     // 0: LOAD 02 (load value at address 2 into accumulator)
@@ -84,15 +88,18 @@ TEST(SimpletronOpcodes, LoadTransfersMemoryValueToAccumulator) {
     };
 
     core.run(program);
-
+    const auto& hasError = core.hasError();
+    const auto& state = core.getState();
     const auto& regs = core.getRegisters();
-    EXPECT_FALSE(core.hasError());
-    EXPECT_EQ(core.getState(), State::HALTED);
+
+    EXPECT_FALSE(hasError);
+    EXPECT_EQ(state, State::HALTED);
     EXPECT_EQ(regs.accumulator, 1234);
 }
 
 TEST(SimpletronOpcodes, StoreTransfersAccumulatorToMemory) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // Program:
     // 0: LOAD 03  (load 55 into accumulator)
@@ -119,7 +126,8 @@ TEST(SimpletronOpcodes, StoreTransfersAccumulatorToMemory) {
 // ==========================================
 
 TEST(SimpletronOpcodes, AddSumsMemoryValueToAccumulator) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 04 (acc = 20)
     // 1: ADD 05  (acc = 20 + 15 = 35)
@@ -144,7 +152,8 @@ TEST(SimpletronOpcodes, AddSumsMemoryValueToAccumulator) {
 }
 
 TEST(SimpletronOpcodes, SubtractDeductsMemoryValueFromAccumulator) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 03     (acc = 50)
     // 1: SUBTRACT 04 (acc = 50 - 18 = 32)
@@ -167,7 +176,8 @@ TEST(SimpletronOpcodes, SubtractDeductsMemoryValueFromAccumulator) {
 }
 
 TEST(SimpletronOpcodes, MultiplyMultipliesAccumulatorByMemoryValue) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 03     (acc = 7)
     // 1: MULTIPLY 04 (acc = 7 * 6 = 42)
@@ -190,7 +200,8 @@ TEST(SimpletronOpcodes, MultiplyMultipliesAccumulatorByMemoryValue) {
 }
 
 TEST(SimpletronOpcodes, DivideDividesAccumulatorByMemoryValue) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 03   (acc = 84)
     // 1: DIVIDE 04 (acc = 84 / 2 = 42)
@@ -213,7 +224,8 @@ TEST(SimpletronOpcodes, DivideDividesAccumulatorByMemoryValue) {
 }
 
 TEST(SimpletronOpcodes, DivideByZeroSetsErrorState) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 03   (acc = 10)
     // 1: DIVIDE 04 (division by zero -> runtime error)
@@ -239,7 +251,8 @@ TEST(SimpletronOpcodes, DivideByZeroSetsErrorState) {
 // ==========================================
 
 TEST(SimpletronOpcodes, BranchNegBranchesWhenAccumulatorIsNegative) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 04       (acc = -5)
     // 1: BRANCHNEG 03  (branches directly to HALT at index 3)
@@ -264,7 +277,8 @@ TEST(SimpletronOpcodes, BranchNegBranchesWhenAccumulatorIsNegative) {
 }
 
 TEST(SimpletronOpcodes, BranchNegDoesNotBranchWhenAccumulatorIsPositiveOrZero) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 04       (acc = 10, positive)
     // 1: BRANCHNEG 03  (should not branch)
@@ -289,7 +303,8 @@ TEST(SimpletronOpcodes, BranchNegDoesNotBranchWhenAccumulatorIsPositiveOrZero) {
 }
 
 TEST(SimpletronOpcodes, BranchZeroBranchesWhenAccumulatorIsZero) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: BRACHZERO 02  (acc is 0 by default, jumps directly to index 2)
     // 1: LOAD 03       (trap: must not execute)
@@ -310,7 +325,8 @@ TEST(SimpletronOpcodes, BranchZeroBranchesWhenAccumulatorIsZero) {
 }
 
 TEST(SimpletronOpcodes, BranchZeroDoesNotBranchWhenAccumulatorIsNonZero) {
-    Simpletron core;
+    EventBus bus;
+    Simpletron core(bus);
 
     // 0: LOAD 04       (acc = 7)
     // 1: BRACHZERO 03  (should not branch)

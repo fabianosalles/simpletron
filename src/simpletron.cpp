@@ -1,23 +1,33 @@
 #include "simpletron.h"
 #include <fstream>
+#include <format>
 
 
-ErrorCode 
-Simpletron::load(const vector<short>& program) {
+ErrorCode Simpletron::raiseError(ErrorCode code) noexcept {	
+	errorCode = static_cast<uint8_t>(code);
+	setState(State::ERROR);
+	event_bus.publish(ExectionEvent{ code });
+	return code;
+}
+
+ErrorCode Simpletron::load(const vector<short>& program) {	
 
 	if (program.size() > MEM_SIZE)
 		return raiseError(ErrorCode::NOT_ENOUGTH_MEMORY);
 
-	state = State::LOADING;
+	setState(State::LOADING);	
 	for (auto i = 0; i < program.size(); i++)
 		memory[i] = program[i];
-	state = State::READY;
-	return ErrorCode::SUCCESS;
+
+	setState(State::READY);		
+	event_bus.publish(ProgramLoadedEvent{ program.size() });
+
+	return ErrorCode::NONE;
 }
 
 
 void Simpletron::execute() {
-	state = State::RUNNING;
+	setState(State::RUNNING);
 	while ( state == State::RUNNING && regs.counter < MEM_SIZE) {
 
 		//1. fetch
@@ -27,56 +37,48 @@ void Simpletron::execute() {
 		regs.opCode = static_cast<OpCode>(regs.instruction / 100);
 		regs.operand = static_cast<uint16_t>(regs.instruction % 100);
 
-		if (!executeInstruction()) {
+		auto result = executeInstruction();
+		if (result != ErrorCode::NONE) {
 			break;
 		}
 	}
 }
 
-bool Simpletron::executeInstruction() {
-    switch (regs.opCode) {
-		case OpCode::NOOP:      return true;
-        case OpCode::READ:      return opRead();
-        case OpCode::WRITE:     return opWrite();
-        case OpCode::LOAD:      return opLoad();
-        case OpCode::STORE:     return opStore();
-        case OpCode::ADD:       return opAdd();
-        case OpCode::SUBTRACT:  return opSubtract();
-        case OpCode::DIVIDE:    return opDivide();
-        case OpCode::MULTIPLY:  return opMultiply();
-        case OpCode::BRANCH:    return opBranch();
-        case OpCode::BRANCHNEG: return opBranchNeg();
-        case OpCode::BRACHZERO: return opBranchZero();
-        case OpCode::HALT:      return opHalt();
-        default:
-            raiseError(ErrorCode::INVALID_INSTRUCTION);
-            return false;
-    }
+ErrorCode Simpletron::executeInstruction() {
+	switch (regs.opCode) {
+		case OpCode::NOOP:      return ErrorCode::NONE;
+		case OpCode::READ:      return opRead();
+		case OpCode::WRITE:     return opWrite();
+		case OpCode::LOAD:      return opLoad();
+		case OpCode::STORE:     return opStore();
+		case OpCode::ADD:       return opAdd();
+		case OpCode::SUBTRACT:  return opSubtract();
+		case OpCode::DIVIDE:    return opDivide();
+		case OpCode::MULTIPLY:  return opMultiply();
+		case OpCode::BRANCH:    return opBranch();
+		case OpCode::BRANCHNEG: return opBranchNeg();
+		case OpCode::BRACHZERO: return opBranchZero();
+		case OpCode::HALT:      return opHalt();
+		default:
+			return raiseError(ErrorCode::INVALID_INSTRUCTION);
+	}
 }
 
-void Simpletron::run(const vector<short>& program) {
-	cout << "Loading program into memory... ";
-	switch (load(program) ) {
-		case ErrorCode::NOT_ENOUGTH_MEMORY:
-			cout << "Error: Not enough memory to load program." << endl;
-			return;
-		case ErrorCode::INVALID_INSTRUCTION:
-			cout << "Error: Invalid instruction in program." << endl;
-			return;
-		case ErrorCode::SUCCESS:
-			cout << "Success." << endl;
-			break;
-		default:
-			cout << "Error." << endl;
-			return;
-	}
 
-	cout << "Running..." << endl;
+ErrorCode Simpletron::run(const vector<short>& program) {
+	
+	auto result = load(program);
+	if (result != ErrorCode::NONE) 
+		return result;	
 
 	execute();
+	//event_bus.publish(ExectionEvent{ ErrorCode::SUCCESS });
 	cout << endl << "*** Program finished ***" << endl;
 	dump();
+
+	return ErrorCode::NONE;
 }
+
 
 bool Simpletron::isValidOpCode(OpCode op) noexcept {
 	switch (op) {
@@ -99,13 +101,25 @@ bool Simpletron::isValidOpCode(OpCode op) noexcept {
 	}
 }
 
-bool Simpletron::parse(const vector<short>& program) {
-	cout << "Parsing... " << endl;
+void Simpletron::setState(State newState) noexcept
+{
+	if (state != newState) {
+		auto oldState = state;
+		state = newState;
+		event_bus.publish(StateChangedEvent{ oldState, newState });
+	}
+}
+
+
+
+bool Simpletron::parse(const vector<short>& program) {		
+		
 	if (program.size() > MEM_SIZE) {
-		cout << "Program too large to fit in memory." << endl;
+		raiseError(ErrorCode::NOT_ENOUGTH_MEMORY);		
 		return false;
 	}
 		
+	setState(State::PARSING);
 	for (size_t i = 0; i < program.size(); i++) {
 		const int16_t instruction = program[i];
 		const auto opCode = static_cast<OpCode>(instruction / 100);
@@ -172,81 +186,80 @@ void Simpletron::reset() {
 	regs.instruction = 0;
 	regs.operand = 0;
 	regs.opCode = OpCode::HALT;
-	state = State::READY;
+	setState(State::READY);
 }
 
 
-bool Simpletron::opRead() {
+ErrorCode Simpletron::opRead() {
 	int value = 0;
 	cout << " ? ";
 	if (!(cin >> value)) {
 		cin.clear();
-		return false;
+		return ErrorCode::NONE;
 	}
 	memory[regs.operand] = static_cast<int16_t>(value);
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opWrite() {
+ErrorCode Simpletron::opWrite() {
 	cout << setw(5) << setfill('0') << showpos << internal << memory[regs.operand] << endl;
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opLoad() {
+ErrorCode Simpletron::opLoad() {
 	regs.accumulator = memory[regs.operand];
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opStore() {
+ErrorCode Simpletron::opStore() {
 	memory[regs.operand] = regs.accumulator;
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opAdd() {
+ErrorCode Simpletron::opAdd() {
 	regs.accumulator += memory[regs.operand];
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opSubtract() {
+ErrorCode Simpletron::opSubtract() {
 	regs.accumulator -= memory[regs.operand];
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opDivide() {
+ErrorCode Simpletron::opDivide() {
 	if (memory[regs.operand] == 0) {
-		raiseError(ErrorCode::DIVISION_BY_ZERO);		
-		return false;
+		return raiseError(ErrorCode::DIVISION_BY_ZERO);
 	}
 
 	regs.accumulator /= memory[regs.operand];
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opMultiply() {
+ErrorCode Simpletron::opMultiply() {
 	regs.accumulator *= memory[regs.operand];
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opBranch() {
+ErrorCode Simpletron::opBranch() {
 	regs.counter = regs.operand;
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opBranchNeg() {
+ErrorCode Simpletron::opBranchNeg() {
 	if (regs.accumulator < 0)
 		regs.counter = regs.operand;
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opBranchZero() {
+ErrorCode Simpletron::opBranchZero() {
 	if (regs.accumulator == 0)
 		regs.counter = regs.operand;
-	return true;
+	return ErrorCode::NONE;
 }
 
-bool Simpletron::opHalt() {	
+ErrorCode Simpletron::opHalt() {	
 	state = State::HALTED;
-	return true;
+	return ErrorCode::NONE;
 }
 
 
