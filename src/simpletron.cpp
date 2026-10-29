@@ -66,14 +66,14 @@ ErrorCode Simpletron::executeInstruction() {
 
 
 ErrorCode Simpletron::run(const vector<short>& program) {
-	
+
 	auto result = load(program);
 	if (result != ErrorCode::NONE) 
 		return result;	
 
+	event_bus.publish(ProgramStartEvent{});
 	execute();
-	//event_bus.publish(ExectionEvent{ ErrorCode::SUCCESS });
-	cout << endl << "*** Program finished ***" << endl;
+	event_bus.publish(ProgramEndEvent{});
 	dump();
 
 	return ErrorCode::NONE;
@@ -113,12 +113,12 @@ void Simpletron::setState(State newState) noexcept
 
 
 bool Simpletron::parse(const vector<short>& program) {		
-		
+
 	if (program.size() > MEM_SIZE) {
 		raiseError(ErrorCode::NOT_ENOUGTH_MEMORY);		
 		return false;
 	}
-		
+
 	setState(State::PARSING);
 	for (size_t i = 0; i < program.size(); i++) {
 		const int16_t instruction = program[i];
@@ -126,52 +126,50 @@ bool Simpletron::parse(const vector<short>& program) {
 		const auto operand = static_cast<uint16_t>(instruction % 100);
 
 		if (operand >= MEM_SIZE) {
-			std::cout << "Invalid operand address at index " << i << ": " << operand << "\n";
+			event_bus.publish(ValidationEvent{ ValidationStatus::INVALID_OPERAND, static_cast<uint16_t>(i), operand });
 			return false;
 		}
 
 		if (!isValidOpCode(opCode)) {
-			cout << "Invalid instruction : " << instruction << endl;
-			return false;
-		}		
+				event_bus.publish(ValidationEvent{ ValidationStatus::INVALID_INSTRUCTION, static_cast<uint16_t>(i), static_cast<uint16_t>(instruction) });
+				return false;
+			}
 	}
 
-	cout << "Program is valid." << endl;;
+	// Programa válido
 	return true;
 }
 
 void Simpletron::dumpRegisters() const {
-	cout << "Registers:" << endl;
-	cout << "  accumulator         : " << showpos << setfill('0') << setw(5) << internal << regs.accumulator << endl;
-	cout << "  instructionCounter  : " << noshowpos << setfill(' ') << setw(5) << internal << regs.counter << endl;
-	cout << "  instructionRegister : " << showpos << setfill('0') << setw(5) << internal << regs.instruction << endl;
-	cout << "  operationCode       : " << noshowpos << setfill(' ') << setw(5) << internal << static_cast<uint8_t>(regs.opCode) << endl;
-	cout << "  operand             : " << noshowpos << setfill(' ') << setw(5) << internal << regs.operand << endl;	
+	event_bus.publish(RegistersDumpEvent{
+		regs.accumulator,
+		regs.counter,
+		regs.instruction,
+		static_cast<uint8_t>(regs.opCode),
+		regs.operand
+	});
 }
 
 void Simpletron::dumpMemory() const {
-	cout << "Memory\n       0     1     2     3     4     5     6     7     8     9" << endl;
-	for (int i = 0; i < 100; ++i){
-		if (i % 10 == 0){
-			if (i == 0)
-				cout << " ";			
-			cout << noshowpos << i << " ";
-		}
-		cout << showpos << setfill('0') << setw(5) << internal << memory[i] << " ";
-		if ((i + 1) % 10 == 0) 
-			cout << endl;
+	// Publicar evento para cada linha de memória (10 em 10)
+	for (int start = 0; start < MEM_SIZE; start += 10) {
+		event_bus.publish(MemoryDumpEvent{ 
+			static_cast<uint16_t>(start),
+			static_cast<uint16_t>(start + 9)
+		});
 	}
 }
 
 void Simpletron::printInteractiveMenu() const {
-	cout <<"* -------------------------------------------------------------------- *" << endl
-		<< "|                      Welcome to Simpletron!                          |" << endl
-		<< "* -------------------------------------------------------------------- *" << endl
-		<< "| Please enter your program one instruction (or data word) at a time.  |" << endl
-		<< "| I will type the location number and a question mark(?).              |" << endl
-		<< "| You then type the word for that location.                            |" << endl
-		<< "| Type the sentinel -9999 to stop entering your program.               | " << endl
-		<< "* -------------------------------------------------------------------- *" << endl;
+	// Menu permanece com cout já que é apenas interface de entrada
+	std::cout <<"* -------------------------------------------------------------------- *" << std::endl
+		<< "|                      Welcome to Simpletron!                          |" << std::endl
+		<< "* -------------------------------------------------------------------- *" << std::endl
+		<< "| Please enter your program one instruction (or data word) at a time.  |" << std::endl
+		<< "| I will type the location number and a question mark(?).              |" << std::endl
+		<< "| You then type the word for that location.                            |" << std::endl
+		<< "| Type the sentinel -9999 to stop entering your program.               | " << std::endl
+		<< "* -------------------------------------------------------------------- *" << std::endl;
 }
 
 void Simpletron::dump() const {
@@ -191,18 +189,17 @@ void Simpletron::reset() {
 
 
 ErrorCode Simpletron::opRead() {
-	int value = 0;
-	cout << " ? ";
-	if (!(cin >> value)) {
-		cin.clear();
+	event_bus.publish(InputPromptEvent{});
+	int16_t value = input_provider.readValue();
+	if (!input_provider.lastReadSucceeded()) {
 		return ErrorCode::NONE;
 	}
-	memory[regs.operand] = static_cast<int16_t>(value);
+	memory[regs.operand] = value;
 	return ErrorCode::NONE;
 }
 
 ErrorCode Simpletron::opWrite() {
-	cout << setw(5) << setfill('0') << showpos << internal << memory[regs.operand] << endl;
+	event_bus.publish(OutputValueEvent{ memory[regs.operand] });
 	return ErrorCode::NONE;
 }
 
@@ -263,14 +260,14 @@ ErrorCode Simpletron::opHalt() {
 }
 
 
-vector<short> Simpletron::readProgram() const {
+vector<short> Simpletron::readProgram() {
 	printInteractiveMenu();
 	short i = 0;
 	short instruction;
 	auto *program = new vector<short>();
 	do {
-		cout << "   " << setw(4) << setfill('0') << noshowpos << i << " ? ";
-		cin >> instruction;
+		std::cout << "   " << std::setw(4) << std::setfill('0') << std::noshowpos << i << " ? ";
+		instruction = input_provider.readValue();
 		if (instruction != -9999) {
 			program->push_back(instruction);
 			i++;

@@ -3,6 +3,7 @@
 #include<unordered_map>
 #include<functional>
 #include <any>
+#include <cstdint>
 
 enum class LogLevel {
 	DEBUG,
@@ -14,6 +15,66 @@ enum class LogLevel {
 struct LogEvent {
 	LogLevel level;
 	std::string message;
+};
+
+// Output Events - Pure data, memory optimized
+struct RegistersDumpEvent {
+	int16_t accumulator;
+	uint16_t counter;
+	int16_t instruction;
+	uint8_t opCode;
+	uint16_t operand;
+};
+
+struct MemoryDumpEvent {
+	uint16_t startAddress;
+	uint16_t endAddress;
+	// Main is responsible for accessing memory via simpletron.getMemory()
+};
+
+struct OutputValueEvent {
+	int16_t value;
+};
+
+struct InputPromptEvent {
+	// Event indicates that input is required
+	// Main responds by publishing InputProvidedEvent
+};
+
+struct InputProvidedEvent {
+	int16_t value;
+	bool success;
+};
+
+enum class ValidationStatus : uint8_t {
+	VALID,
+	INVALID_OPERAND,
+	INVALID_INSTRUCTION
+};
+
+struct ValidationEvent {
+	ValidationStatus status;
+	uint16_t instructionIndex;  // Index of instruction with problem
+	uint16_t faultyValue;       // Invalid value
+};
+
+struct ProgramStartEvent {
+	// Marks beginning of execution
+};
+
+struct ProgramEndEvent {
+	// Marks end of execution
+};
+
+struct ErrorMessageEvent {
+	enum class ErrorType : uint8_t {
+		PARSE_INVALID_OPERAND,
+		PARSE_INVALID_INSTRUCTION,
+		DIVISION_BY_ZERO,
+		INVALID_INSTRUCTION_CODE,
+		FILE_NOT_FOUND
+	} errorType;
+	uint16_t detail;  // Can be index, address, etc
 };
 
 

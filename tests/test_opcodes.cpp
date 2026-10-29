@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "simpletron.h"
+#include "mock_input_provider.h"
 
 template <typename StreamType>
 class StreamRedirect {
@@ -29,17 +30,14 @@ private:
 
 TEST(SimpletronOpcodes, ReadStoresInputIntoMemory) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    input.enqueueValue(42);
+    Simpletron core(bus, input);
 
-    std::cin.clear();
-    std::stringstream input("42\n");
-    {
-        StreamRedirect<std::istream> cinRedirect(std::cin, input.rdbuf());
-        core.run({
-            makeInstruction(OpCode::READ, 10),
-            makeInstruction(OpCode::HALT, 0)
-            });
-    }
+    core.run({
+        makeInstruction(OpCode::READ, 10),
+        makeInstruction(OpCode::HALT, 0)
+        });
 
     auto memory = core.getMemory();
     EXPECT_FALSE(core.hasError());
@@ -49,24 +47,30 @@ TEST(SimpletronOpcodes, ReadStoresInputIntoMemory) {
 
 TEST(SimpletronOpcodes, WriteOutputsMemoryValue) {
     EventBus bus;
-    Simpletron core(bus);
-    std::stringstream output;
+    MockInputProvider input;
+    Simpletron core(bus, input);
+
+    int16_t outputValue = 0;
+    bool outputCalled = false;
+
+    // Subscrever ao evento de output
+    bus.subscribe<OutputValueEvent>([&outputValue, &outputCalled](const OutputValueEvent& event) {
+        outputValue = event.value;
+        outputCalled = true;
+    });
 
     const std::vector<short> program = {
         makeInstruction(OpCode::WRITE, 2),
         makeInstruction(OpCode::HALT, 0),
-        42  // This is the value that will be written to the output
+        42  // This is the value that will be written
     };
 
-    {
-        StreamRedirect<std::ostream> coutRedirect(std::cout, output.rdbuf());
-        core.run(program);
-    }
+    core.run(program);
 
-    const std::string outStr = output.str();
     EXPECT_FALSE(core.hasError());
     EXPECT_EQ(core.getState(), State::HALTED);
-    EXPECT_NE(outStr.find("42"), std::string::npos);
+    EXPECT_TRUE(outputCalled);
+    EXPECT_EQ(outputValue, 42);
 }
 
 // ==========================================
@@ -75,7 +79,8 @@ TEST(SimpletronOpcodes, WriteOutputsMemoryValue) {
 
 TEST(SimpletronOpcodes, LoadTransfersMemoryValueToAccumulator) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // Program:
     // 0: LOAD 02 (load value at address 2 into accumulator)
@@ -99,7 +104,8 @@ TEST(SimpletronOpcodes, LoadTransfersMemoryValueToAccumulator) {
 
 TEST(SimpletronOpcodes, StoreTransfersAccumulatorToMemory) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // Program:
     // 0: LOAD 03  (load 55 into accumulator)
@@ -127,7 +133,8 @@ TEST(SimpletronOpcodes, StoreTransfersAccumulatorToMemory) {
 
 TEST(SimpletronOpcodes, AddSumsMemoryValueToAccumulator) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 04 (acc = 20)
     // 1: ADD 05  (acc = 20 + 15 = 35)
@@ -153,7 +160,8 @@ TEST(SimpletronOpcodes, AddSumsMemoryValueToAccumulator) {
 
 TEST(SimpletronOpcodes, SubtractDeductsMemoryValueFromAccumulator) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 03     (acc = 50)
     // 1: SUBTRACT 04 (acc = 50 - 18 = 32)
@@ -177,7 +185,8 @@ TEST(SimpletronOpcodes, SubtractDeductsMemoryValueFromAccumulator) {
 
 TEST(SimpletronOpcodes, MultiplyMultipliesAccumulatorByMemoryValue) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 03     (acc = 7)
     // 1: MULTIPLY 04 (acc = 7 * 6 = 42)
@@ -201,7 +210,8 @@ TEST(SimpletronOpcodes, MultiplyMultipliesAccumulatorByMemoryValue) {
 
 TEST(SimpletronOpcodes, DivideDividesAccumulatorByMemoryValue) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 03   (acc = 84)
     // 1: DIVIDE 04 (acc = 84 / 2 = 42)
@@ -225,7 +235,8 @@ TEST(SimpletronOpcodes, DivideDividesAccumulatorByMemoryValue) {
 
 TEST(SimpletronOpcodes, DivideByZeroSetsErrorState) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 03   (acc = 10)
     // 1: DIVIDE 04 (division by zero -> runtime error)
@@ -252,7 +263,8 @@ TEST(SimpletronOpcodes, DivideByZeroSetsErrorState) {
 
 TEST(SimpletronOpcodes, BranchNegBranchesWhenAccumulatorIsNegative) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 04       (acc = -5)
     // 1: BRANCHNEG 03  (branches directly to HALT at index 3)
@@ -278,7 +290,8 @@ TEST(SimpletronOpcodes, BranchNegBranchesWhenAccumulatorIsNegative) {
 
 TEST(SimpletronOpcodes, BranchNegDoesNotBranchWhenAccumulatorIsPositiveOrZero) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 04       (acc = 10, positive)
     // 1: BRANCHNEG 03  (should not branch)
@@ -304,7 +317,8 @@ TEST(SimpletronOpcodes, BranchNegDoesNotBranchWhenAccumulatorIsPositiveOrZero) {
 
 TEST(SimpletronOpcodes, BranchZeroBranchesWhenAccumulatorIsZero) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: BRACHZERO 02  (acc is 0 by default, jumps directly to index 2)
     // 1: LOAD 03       (trap: must not execute)
@@ -326,7 +340,8 @@ TEST(SimpletronOpcodes, BranchZeroBranchesWhenAccumulatorIsZero) {
 
 TEST(SimpletronOpcodes, BranchZeroDoesNotBranchWhenAccumulatorIsNonZero) {
     EventBus bus;
-    Simpletron core(bus);
+    MockInputProvider input;
+    Simpletron core(bus, input);
 
     // 0: LOAD 04       (acc = 7)
     // 1: BRACHZERO 03  (should not branch)

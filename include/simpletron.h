@@ -9,6 +9,7 @@
 #include <optional>
 #include <format>
 #include "events.h"
+#include "input_provider.h"
 
 using namespace std;
 
@@ -78,17 +79,18 @@ struct ExectionEvent {
 
 class Simpletron {
 public:
-	explicit Simpletron(EventBus& bus) noexcept : event_bus(bus){};	
+	explicit Simpletron(EventBus& bus, IInputProvider& inputProvider) noexcept 
+		: event_bus(bus), input_provider(inputProvider) {};	
 	bool parse(const vector<short>& program);
 	void dump() const;
 	ErrorCode run(const vector<short>& program);
-	vector<short> readProgram() const;
+	vector<short> readProgram();
 	static vector<short> readFromFile(const std::string& fileName);
 
 	ErrorCode raiseError(ErrorCode code) noexcept;
 
 	/**
-	* @bref Retrieves a readonly view of the Simpletron's memory.
+	* @brief Retrieves a readonly view of the Simpletron's memory.
 	*/
 	[[nodiscard]] span<const int16_t> getMemory() const noexcept {
 		return span<const int16_t>(memory, MEM_SIZE);
@@ -102,6 +104,7 @@ public:
 private:
 	using OperationHandler = bool (Simpletron::*)();
 	EventBus& event_bus;
+	IInputProvider& input_provider;
 
 	int16_t memory[MEM_SIZE] = { 0 };
 	Registers regs = { 0 };
