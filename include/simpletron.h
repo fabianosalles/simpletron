@@ -126,8 +126,8 @@ private:
 
 	ErrorCode load(const vector<short>& program);
 	ErrorCode executeInstruction();
+	ErrorCode execute();
 	void reset();
-	void execute();
 	void dumpRegisters() const;
 	void dumpMemory() const;
 	void printInteractiveMenu() const;	

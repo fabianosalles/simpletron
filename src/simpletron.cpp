@@ -26,7 +26,7 @@ ErrorCode Simpletron::load(const vector<short>& program) {
 }
 
 
-void Simpletron::execute() {
+ErrorCode Simpletron::execute() {
 	setState(State::RUNNING);
 	while ( state == State::RUNNING && regs.counter < MEM_SIZE) {
 
@@ -39,9 +39,10 @@ void Simpletron::execute() {
 
 		auto result = executeInstruction();
 		if (result != ErrorCode::NONE) {
-			break;
+			return result;
 		}
 	}
+	return ErrorCode::NONE;
 }
 
 ErrorCode Simpletron::executeInstruction() {
@@ -72,11 +73,11 @@ ErrorCode Simpletron::run(const vector<short>& program) {
 		return result;	
 
 	event_bus.publish(ProgramStartEvent{});
-	execute();
+	auto executionResult = execute();
 	event_bus.publish(ProgramEndEvent{});
 	dump();
 
-	return ErrorCode::NONE;
+	return executionResult;
 }
 
 
