@@ -53,7 +53,7 @@ TEST(SimpletronOpcodes, WriteOutputsMemoryValue) {
     int16_t outputValue = 0;
     bool outputCalled = false;
 
-    // Subscrever ao evento de output
+    // Subscribe to the output event
     bus.subscribe<OutputValueEvent>([&outputValue, &outputCalled](const OutputValueEvent& event) {
         outputValue = event.value;
         outputCalled = true;

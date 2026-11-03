@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include "simpletron.h"
+#include "clock_runner.h"
 #include "console_input_provider.cpp"
 
 using namespace std;
@@ -23,12 +24,12 @@ int main(int argc, char *argv[]) {
 	Simpletron simpletron(event_bus, input_provider);
 	vector<short> program;
 
-	// Subscrever LogEvent
+	// Subscribe to LogEvent
 	event_bus.subscribe<LogEvent>([](const LogEvent& event) {
 		LogToStdOut(event);
 	});
 
-	// Subscrever RegistersDumpEvent
+	// Subscribe to RegistersDumpEvent
 	event_bus.subscribe<RegistersDumpEvent>([](const RegistersDumpEvent& event) {
 		cout << "Registers:" << endl;
 		cout << "  accumulator         : " << showpos << setfill('0') << setw(5) << internal << event.accumulator << endl;
@@ -60,13 +61,13 @@ int main(int argc, char *argv[]) {
 		cout << setw(5) << setfill('0') << showpos << internal << event.value << endl;
 	});
 
-	// Subscrever InputPromptEvent
+	// Subscribe to InputPromptEvent
 	event_bus.subscribe<InputPromptEvent>([](const InputPromptEvent& event) {
 		cout << " ? ";
 		cout.flush();
 	});
 
-	// Subscrever ValidationEvent
+	// Subscribe to ValidationEvent
 	event_bus.subscribe<ValidationEvent>([](const ValidationEvent& event) {
 		switch (event.status) {
 		case ValidationStatus::VALID:
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]) {
 		cout << endl << "*** Program finished ***" << endl;
 	});
 
-	// Subscrever ErrorMessageEvent (opcional)
+	// Subscribe to ErrorMessageEvent (optional)
 	event_bus.subscribe<ErrorMessageEvent>([](const ErrorMessageEvent& event) {
 		cout << "ERROR: ";
 		switch (event.errorType) {
@@ -107,12 +108,28 @@ int main(int argc, char *argv[]) {
 		}
 	});
 
+	const bool cycleMode = argc >= 4 && string(argv[1]) == "--cycles";
 	if (argc <= 1) {
 		program = simpletron.readProgram();
-		simpletron.run(program);
+	}
+	else if (!cycleMode) {
+		program = Simpletron::readFromFile(argv[1]);
+	}
+
+	if (cycleMode) {
+		program = Simpletron::readFromFile(argv[2]);
+	}
+
+	if (cycleMode) {
+		const auto loadResult = simpletron.load(program);
+		if (loadResult == ErrorCode::NONE) {
+			const auto cycleCount = static_cast<size_t>(stoull(argv[3]));
+			const auto result = ClockRunner::runForCycles(simpletron, cycleCount);
+			cout << "Executed cycles: " << result.cycles << endl;
+			simpletron.dump();
+		}
 	}
 	else {
-		program = Simpletron::readFromFile(argv[1]);
 		simpletron.run(program);
 	}
 

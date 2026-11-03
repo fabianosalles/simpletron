@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -74,6 +76,13 @@ struct ExectionEvent {
 	ErrorCode errorCode;
 };
 
+struct InstructionExecutedEvent {
+	uint16_t address;
+	int16_t instruction;
+	uint8_t opCode;
+	uint16_t operand;
+	ErrorCode result;
+};
 
 
 
@@ -83,7 +92,15 @@ public:
 		: event_bus(bus), input_provider(inputProvider) {};	
 	bool parse(const vector<short>& program);
 	void dump() const;
+	ErrorCode load(const vector<short>& program);
 	ErrorCode run(const vector<short>& program);
+	/**
+	 * @brief Executes exactly one instruction cycle.
+	 *
+	 * A READ instruction may block while the configured input provider waits
+	 * for input. Timing and scheduling are intentionally handled by callers.
+	 */
+	ErrorCode step();
 	vector<short> readProgram();
 	static vector<short> readFromFile(const std::string& fileName);
 
@@ -102,7 +119,6 @@ public:
 	[[nodiscard]] bool hasError() const noexcept { return state == State::ERROR; }
 
 private:
-	using OperationHandler = bool (Simpletron::*)();
 	EventBus& event_bus;
 	IInputProvider& input_provider;
 
@@ -110,6 +126,8 @@ private:
 	Registers regs = { 0 };
 	State state = State::READY;
 	uint8_t errorCode = static_cast<uint8_t>(ErrorCode::NONE);
+	bool executionStarted = false;
+	bool executionEnded = false;
 		
 	ErrorCode opRead();
 	ErrorCode opWrite();	
@@ -124,9 +142,7 @@ private:
 	ErrorCode opBranchZero();
 	ErrorCode opHalt();	
 
-	ErrorCode load(const vector<short>& program);
 	ErrorCode executeInstruction();
-	ErrorCode execute();
 	void reset();
 	void dumpRegisters() const;
 	void dumpMemory() const;

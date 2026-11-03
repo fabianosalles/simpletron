@@ -20,29 +20,57 @@ ErrorCode Simpletron::load(const vector<short>& program) {
 		memory[i] = program[i];
 
 	setState(State::READY);		
+	executionStarted = false;
+	executionEnded = false;
 	event_bus.publish(ProgramLoadedEvent{ program.size() });
 
 	return ErrorCode::NONE;
 }
 
 
-ErrorCode Simpletron::execute() {
-	setState(State::RUNNING);
-	while ( state == State::RUNNING && regs.counter < MEM_SIZE) {
+ErrorCode Simpletron::step() {
+	if (state == State::HALTED)
+		return ErrorCode::NONE;
 
-		//1. fetch
-		regs.instruction = memory[regs.counter++];		
+	if (state == State::ERROR)
+		return static_cast<ErrorCode>(errorCode);
 
-		//2. decode
-		regs.opCode = static_cast<OpCode>(regs.instruction / 100);
-		regs.operand = static_cast<uint16_t>(regs.instruction % 100);
-
-		auto result = executeInstruction();
-		if (result != ErrorCode::NONE) {
-			return result;
+	if (state == State::READY)
+	{
+		setState(State::RUNNING);
+		if (!executionStarted) {
+			executionStarted = true;
+			event_bus.publish(ProgramStartEvent{});
 		}
 	}
-	return ErrorCode::NONE;
+
+	if (regs.counter >= MEM_SIZE) {
+		const auto result = raiseError(ErrorCode::NOT_ENOUGTH_MEMORY);
+		if (!executionEnded) {
+			executionEnded = true;
+			event_bus.publish(ProgramEndEvent{});
+		}
+		return result;
+	}
+
+	const auto address = regs.counter;
+	regs.instruction = memory[regs.counter++];
+	regs.opCode = static_cast<OpCode>(regs.instruction / 100);
+	regs.operand = static_cast<uint16_t>(regs.instruction % 100);
+
+	const auto result = executeInstruction();
+	event_bus.publish(InstructionExecutedEvent{
+		address,
+		regs.instruction,
+		static_cast<uint8_t>(regs.opCode),
+		regs.operand,
+		result
+	});
+	if ((state == State::HALTED || state == State::ERROR) && !executionEnded) {
+		executionEnded = true;
+		event_bus.publish(ProgramEndEvent{});
+	}
+	return result;
 }
 
 ErrorCode Simpletron::executeInstruction() {
@@ -72,9 +100,12 @@ ErrorCode Simpletron::run(const vector<short>& program) {
 	if (result != ErrorCode::NONE) 
 		return result;	
 
-	event_bus.publish(ProgramStartEvent{});
-	auto executionResult = execute();
-	event_bus.publish(ProgramEndEvent{});
+	ErrorCode executionResult = ErrorCode::NONE;
+	while (state != State::HALTED && state != State::ERROR) {
+		executionResult = step();
+		if (executionResult != ErrorCode::NONE)
+			break;
+	}
 	dump();
 
 	return executionResult;
@@ -137,7 +168,7 @@ bool Simpletron::parse(const vector<short>& program) {
 			}
 	}
 
-	// Programa válido
+	// Valid program
 	return true;
 }
 
@@ -152,7 +183,7 @@ void Simpletron::dumpRegisters() const {
 }
 
 void Simpletron::dumpMemory() const {
-	// Publicar evento para cada linha de memória (10 em 10)
+	// Publish an event for each memory row (ten addresses per row)
 	for (int start = 0; start < MEM_SIZE; start += 10) {
 		event_bus.publish(MemoryDumpEvent{ 
 			static_cast<uint16_t>(start),
@@ -162,7 +193,7 @@ void Simpletron::dumpMemory() const {
 }
 
 void Simpletron::printInteractiveMenu() const {
-	// Menu permanece com cout já que é apenas interface de entrada
+	// The menu uses cout because it is part of the input interface
 	std::cout <<"* -------------------------------------------------------------------- *" << std::endl
 		<< "|                      Welcome to Simpletron!                          |" << std::endl
 		<< "* -------------------------------------------------------------------- *" << std::endl

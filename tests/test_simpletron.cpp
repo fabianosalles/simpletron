@@ -17,6 +17,52 @@ TEST(SimpletronCore, RegistersAreZeroInitializedByDefault) {
 	EXPECT_EQ(state, State::READY);    
 }
 
+TEST(SimpletronCore, StepExecutesOneInstructionPerCall) {
+	EventBus bus;
+	MockInputProvider input;
+	Simpletron core(bus, input);
+
+	int executedCycles = 0;
+	bus.subscribe<InstructionExecutedEvent>([&executedCycles](const InstructionExecutedEvent&) {
+		executedCycles++;
+	});
+
+	ASSERT_EQ(core.run({
+		makeInstruction(OpCode::NOOP),
+		makeInstruction(OpCode::HALT)
+	}), ErrorCode::NONE);
+
+	EXPECT_EQ(executedCycles, 2);
+}
+
+TEST(SimpletronCore, StepStopsAtHalt) {
+	EventBus bus;
+	MockInputProvider input;
+	Simpletron core(bus, input);
+
+	ASSERT_EQ(core.run({ makeInstruction(OpCode::HALT) }), ErrorCode::NONE);
+	const auto counter = core.getRegisters().counter;
+
+	EXPECT_EQ(core.step(), ErrorCode::NONE);
+	EXPECT_EQ(core.getRegisters().counter, counter);
+	EXPECT_TRUE(core.isHalted());
+}
+
+TEST(SimpletronCore, StepReturnsExecutionError) {
+	EventBus bus;
+	MockInputProvider input;
+	Simpletron core(bus, input);
+
+	const auto result = core.run({
+		makeInstruction(OpCode::DIVIDE, 1),
+		0
+	});
+
+	EXPECT_EQ(result, ErrorCode::DIVISION_BY_ZERO);
+	EXPECT_TRUE(core.hasError());
+	EXPECT_EQ(core.step(), ErrorCode::DIVISION_BY_ZERO);
+}
+
 TEST(SimpletronCore, NoopAdvancesCounterWithoutModifyingState) {
 	EventBus bus;   
 	MockInputProvider input;

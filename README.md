@@ -55,30 +55,23 @@ cmake --build build --config Release
 Execute the interpreter binary with a sample file as an argument. The sample files are located in the `samples` directory.
 
 
-### Linux / macOS
-```bash
-./build/bin/simpletron samples/add.txt
-```
+|OS |Command|
+|--|-------|
+|Linux  |```./build/bin/simpletron samples/add.txt```|
+|Windows|```.\build\bin\simpletron.exe samples\add.txt```|
 
-### Windows (PowerShell)
-
-```PowerShell
-.\build\bin\simpletron.exe samples\add.txt
-```
 ## Running Tests
 To execute the unit tests, first build the project with the `-DBUILD_TESTS=ON` option:
+
+
 ```bash
 ctest --test-dir build --output-on-failure -C Release
 ```
 Alternatively, run the tests binary directly:
 
-### Linux / macOS:
+|OS |Command|
+|--|-------|
+|Linux|```./build/bin/simpletron_tests```|
+|Windows|```.\build\bin\simpletron_tests.exe```|
 
-```bash
-./build/bin/simpletron_tests
-```
-### Windows (PowerShell):
 
-```PowerShell
-.\build\bin\simpletron_tests.exe
-```
