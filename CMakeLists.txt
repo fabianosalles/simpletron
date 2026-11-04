@@ -10,6 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # puts simpletronin a library so it can be used by other targets
 add_library(simpletron_core
     src/simpletron.cpp
+    src/assembler.cpp
     src/clock_runner.cpp
     "include/events.h")
 target_include_directories(simpletron_core PUBLIC include)
@@ -35,6 +36,7 @@ enable_testing()
 
 add_executable(simpletron_tests
     tests/test_simpletron.cpp
+    tests/test_assembler.cpp
     tests/test_opcodes.cpp
     tests/test_events.cpp
     tests/test_clock_runner.cpp
@@ -43,6 +45,9 @@ add_executable(simpletron_tests
 target_link_libraries(simpletron_tests PRIVATE
     simpletron_core
     GTest::gtest_main
+)
+target_compile_definitions(simpletron_tests PRIVATE
+    SIMPLETRON_SAMPLE_DIR="${CMAKE_SOURCE_DIR}/samples"
 )
 
 include(GoogleTest)
