@@ -2,10 +2,41 @@
 
 # Simpletron Machine Language Interpreter
 
-A Simpletron Machine Language (SML) interpreter implementation in C++ as proposed by Deitel's book "C++ How to Program, 3rd edition".
+A Simpletron Machine Language (SML) interpreter implemented in C++, based on the exercise from Deitel's book *C++ How to Program, 3rd edition*.
 
+The project supports both the original numeric machine-language format and a human-readable assembly language. The interpreter parses assembly source into Simpletron machine words and then executes those words in the virtual machine.
 
-![Alt text](screenshot/running.png "Running a program in the simpletron")
+The following example reads a number and prints its multiplication table from 1 to 10. The complete source is available at [samples/multiplication-table.asm](samples/multiplication-table.asm).
+
+```asm
+; Print the multiplication table for the value entered by the user.
+.code
+READ number             ; Read the number whose table will be printed.
+LOAD one                ; Initialize the counter to one.
+STORE counter
+
+loop: LOAD number       ; Calculate number * counter.
+	  MULTIPLY counter
+	  STORE product
+	  WRITE product      ; Print the current table row.
+
+	  LOAD counter       ; Advance the counter.
+	  ADD one
+	  STORE counter
+	  LOAD counter
+	  SUBTRACT limit     ; Continue while counter is less than eleven.
+	  BRANCHNEG loop
+	  HALT
+
+.data
+number:  .word 0        ; User-provided number.
+one:     .word 1        ; First multiplier and counter increment.
+counter: .word 0        ; Current multiplier.
+product: .word 0        ; Current multiplication result.
+limit:   .word 11       ; One past the last multiplier to print.
+```
+
+For an input value of `7`, the program prints `7`, `14`, `21`, through `70`.
 
 
 ## The Simpletron Machine Language
@@ -17,19 +48,6 @@ The complete opcode and mnemonic reference is available in [docs/instruction-set
 The interpreter accepts both the original numeric format and Simpletron assembly source. Assembly instructions are case-insensitive, labels end with a colon, and comments start with `#`, `;`, or `//`.
 
 The complete assembly-language reference is available in [docs/assembly-language.md](docs/assembly-language.md).
-
-```asm
-.code
-load value
-add one
-store result
-halt
-
-.data
-value:  .word 40
-one:    .word 2
-result: .word 0
-```
 
 Instruction operands may be decimal memory addresses or labels. The `.code` and `.data` sections may appear in either order, but the assembler always places code before data. The `.word` directive reserves one data memory word, and the assembler reports syntax errors with their source line number.
 
