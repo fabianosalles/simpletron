@@ -37,6 +37,7 @@ enable_testing()
 add_executable(simpletron_tests
     tests/test_simpletron.cpp
     tests/test_assembler.cpp
+    tests/test_runtime_errors.cpp
     tests/test_opcodes.cpp
     tests/test_events.cpp
     tests/test_clock_runner.cpp
