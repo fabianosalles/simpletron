@@ -2,6 +2,7 @@
 #include "assembler.h"
 #include <fstream>
 #include <format>
+#include <limits>
 #include <sstream>
 
 
@@ -57,10 +58,17 @@ ErrorCode Simpletron::step() {
 
 	const auto address = regs.counter;
 	regs.instruction = memory[regs.counter++];
-	regs.opCode = static_cast<OpCode>(regs.instruction / 100);
-	regs.operand = static_cast<uint16_t>(regs.instruction % 100);
+	const auto instructionValue = static_cast<int32_t>(regs.instruction);
+	const auto opCodeValue = instructionValue / 100;
+	const auto operandValue = instructionValue % 100;
+	regs.opCode = static_cast<OpCode>(opCodeValue);
+	regs.operand = operandValue >= 0 ? static_cast<uint16_t>(operandValue) : 0;
 
-	const auto result = executeInstruction();
+	const auto result = instructionValue < 0 || operandValue < 0 || !isValidOpCode(regs.opCode)
+		? raiseError(instructionValue < 0 || !isValidOpCode(regs.opCode)
+			? ErrorCode::INVALID_INSTRUCTION
+			: ErrorCode::INVALID_OPERAND)
+		: executeInstruction();
 	event_bus.publish(InstructionExecutedEvent{
 		address,
 		regs.instruction,
@@ -161,11 +169,23 @@ bool Simpletron::parse(const vector<short>& program) {
 	setState(State::PARSING);
 	for (size_t i = 0; i < program.size(); i++) {
 		const int16_t instruction = program[i];
+		if (instruction < 0) {
+			event_bus.publish(ValidationEvent{
+				ValidationStatus::INVALID_INSTRUCTION,
+				static_cast<uint16_t>(i),
+				static_cast<uint16_t>(instruction)
+			});
+			return false;
+		}
 		const auto opCode = static_cast<OpCode>(instruction / 100);
-		const auto operand = static_cast<uint16_t>(instruction % 100);
+		const auto operand = instruction % 100;
 
-		if (operand >= MEM_SIZE) {
-			event_bus.publish(ValidationEvent{ ValidationStatus::INVALID_OPERAND, static_cast<uint16_t>(i), operand });
+		if (operand < 0 || operand >= MEM_SIZE) {
+			event_bus.publish(ValidationEvent{
+				ValidationStatus::INVALID_OPERAND,
+				static_cast<uint16_t>(i),
+				static_cast<uint16_t>(operand)
+			});
 			return false;
 		}
 
@@ -231,7 +251,7 @@ ErrorCode Simpletron::opRead() {
 	event_bus.publish(InputPromptEvent{});
 	int16_t value = input_provider.readValue();
 	if (!input_provider.lastReadSucceeded()) {
-		return ErrorCode::NONE;
+		return raiseError(ErrorCode::INPUT_FAILURE);
 	}
 	memory[regs.operand] = value;
 	return ErrorCode::NONE;
@@ -253,18 +273,19 @@ ErrorCode Simpletron::opStore() {
 }
 
 ErrorCode Simpletron::opAdd() {
-	regs.accumulator += memory[regs.operand];
-	return ErrorCode::NONE;
+	return checkedAdd(memory[regs.operand]);
 }
 
 ErrorCode Simpletron::opSubtract() {
-	regs.accumulator -= memory[regs.operand];
-	return ErrorCode::NONE;
+	return checkedSubtract(memory[regs.operand]);
 }
 
 ErrorCode Simpletron::opDivide() {
 	if (memory[regs.operand] == 0) {
 		return raiseError(ErrorCode::DIVISION_BY_ZERO);
+	}
+	if (regs.accumulator == std::numeric_limits<int16_t>::min() && memory[regs.operand] == -1) {
+		return raiseError(ErrorCode::ARITHMETIC_OVERFLOW);
 	}
 
 	regs.accumulator /= memory[regs.operand];
@@ -272,7 +293,30 @@ ErrorCode Simpletron::opDivide() {
 }
 
 ErrorCode Simpletron::opMultiply() {
-	regs.accumulator *= memory[regs.operand];
+	return checkedMultiply(memory[regs.operand]);
+}
+
+ErrorCode Simpletron::checkedAdd(int16_t value) noexcept {
+	const auto result = static_cast<int32_t>(regs.accumulator) + value;
+	if (result < std::numeric_limits<int16_t>::min() || result > std::numeric_limits<int16_t>::max())
+		return raiseError(ErrorCode::ARITHMETIC_OVERFLOW);
+	regs.accumulator = static_cast<int16_t>(result);
+	return ErrorCode::NONE;
+}
+
+ErrorCode Simpletron::checkedSubtract(int16_t value) noexcept {
+	const auto result = static_cast<int32_t>(regs.accumulator) - value;
+	if (result < std::numeric_limits<int16_t>::min() || result > std::numeric_limits<int16_t>::max())
+		return raiseError(ErrorCode::ARITHMETIC_OVERFLOW);
+	regs.accumulator = static_cast<int16_t>(result);
+	return ErrorCode::NONE;
+}
+
+ErrorCode Simpletron::checkedMultiply(int16_t value) noexcept {
+	const auto result = static_cast<int32_t>(regs.accumulator) * value;
+	if (result < std::numeric_limits<int16_t>::min() || result > std::numeric_limits<int16_t>::max())
+		return raiseError(ErrorCode::ARITHMETIC_OVERFLOW);
+	regs.accumulator = static_cast<int16_t>(result);
 	return ErrorCode::NONE;
 }
 

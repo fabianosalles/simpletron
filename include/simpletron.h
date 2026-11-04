@@ -37,6 +37,12 @@ enum class ErrorCode : uint8_t {
 	DIVISION_BY_ZERO = 2,
 
 	NOT_ENOUGTH_MEMORY = 3,
+
+	INVALID_OPERAND = 4,
+
+	INPUT_FAILURE = 5,
+
+	ARITHMETIC_OVERFLOW = 6,
 };
 
 enum class OpCode : uint8_t {
@@ -143,6 +149,9 @@ private:
 	ErrorCode opBranchNeg();
 	ErrorCode opBranchZero();
 	ErrorCode opHalt();	
+	ErrorCode checkedAdd(int16_t value) noexcept;
+	ErrorCode checkedSubtract(int16_t value) noexcept;
+	ErrorCode checkedMultiply(int16_t value) noexcept;
 
 	ErrorCode executeInstruction();
 	void reset();
