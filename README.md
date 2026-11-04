@@ -49,6 +49,10 @@ The interpreter accepts both the original numeric format and Simpletron assembly
 
 The complete assembly-language reference is available in [docs/assembly-language.md](docs/assembly-language.md).
 
+Instruction operands may be decimal memory addresses or labels. The `.code` and `.data` sections may appear in either order, but the assembler always places code before data. The `.word` directive reserves one data memory word, and the assembler reports syntax errors with their source line number.
+
+Assembly programs use one statement per line. Labels are resolved automatically, and the assembler supports `NOOP`, `READ`, `WRITE`, `LOAD`, `STORE`, arithmetic operations, conditional branches, `BRANCHPOS`, and `HALT`. Existing numeric `.txt` programs remain supported for compatibility.
+
 ## Goals
 
 This program was originally written as an academic exercise, so please be kind with my student's code style.
