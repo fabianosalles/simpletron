@@ -1,6 +1,8 @@
 #include "simpletron.h"
+#include "assembler.h"
 #include <fstream>
 #include <format>
+#include <sstream>
 
 
 ErrorCode Simpletron::raiseError(ErrorCode code) noexcept {	
@@ -86,7 +88,11 @@ ErrorCode Simpletron::executeInstruction() {
 		case OpCode::MULTIPLY:  return opMultiply();
 		case OpCode::BRANCH:    return opBranch();
 		case OpCode::BRANCHNEG: return opBranchNeg();
-		case OpCode::BRACHZERO: return opBranchZero();
+		case OpCode::BRANCHZERO: return opBranchZero();
+		case OpCode::BRANCHPOS:
+			if (regs.accumulator > 0)
+				regs.counter = regs.operand;
+			return ErrorCode::NONE;
 		case OpCode::HALT:      return opHalt();
 		default:
 			return raiseError(ErrorCode::INVALID_INSTRUCTION);
@@ -125,7 +131,8 @@ bool Simpletron::isValidOpCode(OpCode op) noexcept {
 	case OpCode::MULTIPLY:
 	case OpCode::BRANCH:
 	case OpCode::BRANCHNEG:
-	case OpCode::BRACHZERO:
+	case OpCode::BRANCHZERO:
+	case OpCode::BRANCHPOS:
 	case OpCode::HALT:
 		return true;
 	default:
@@ -317,11 +324,13 @@ vector<short> Simpletron::readFromFile(const string& fileName) {
 		return {};
 	}
 
-	vector<short> program;
-	short instruction;
-	while (file >> instruction){
-		program.push_back(instruction);
+	std::ostringstream source;
+	source << file.rdbuf();
+	try {
+		const auto assembled = Assembler::assemble(source.str());
+		return vector<short>(assembled.begin(), assembled.end());
+	} catch (const AssemblyError& error) {
+		cout << error.what() << endl;
+		return {};
 	}
-	file.close();
-	return program;
 }

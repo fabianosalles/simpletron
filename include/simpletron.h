@@ -51,8 +51,10 @@ enum class OpCode : uint8_t {
 	MULTIPLY = 33,
 	BRANCH = 40,
 	BRANCHNEG = 41,
-	BRACHZERO = 42,
-	HALT = 43
+	BRANCHZERO = 42,
+	BRACHZERO = BRANCHZERO,
+	BRANCHPOS = 43,
+	HALT = 50
 };
 
 struct Registers {
