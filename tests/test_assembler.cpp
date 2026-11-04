@@ -19,6 +19,24 @@ std::string readSourceFile(const std::string& fileName) {
 }
 }
 
+TEST(AssemblerSamples, MultiplicationTableUsesLoop) {
+	EventBus bus;
+	MockInputProvider input;
+	input.enqueueValue(7);
+
+	std::vector<int16_t> output;
+	bus.subscribe<OutputValueEvent>([&output](const OutputValueEvent& event) {
+		output.push_back(event.value);
+	});
+
+	Simpletron core(bus, input);
+	const auto program = Assembler::assemble(readSourceFile("multiplication-table.asm"));
+
+	EXPECT_EQ(core.run(program), ErrorCode::NONE);
+	EXPECT_TRUE(core.isHalted());
+	EXPECT_EQ(output, (std::vector<int16_t>{ 7, 14, 21, 28, 35, 42, 49, 56, 63, 70 }));
+}
+
 TEST(Assembler, EncodesMnemonicsAndResolvesLabels) {
 	const auto program = Assembler::assemble(
 		".data\n"
