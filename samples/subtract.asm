@@ -1,4 +1,5 @@
 ; Read two values and subtract the subtrahend from the minuend.
+.code
 READ minuend        ; Read the value to subtract from.
 READ subtrahend     ; Read the value to subtract.
 LOAD minuend        ; Load the minuend into the accumulator.
@@ -7,6 +8,7 @@ STORE result
 WRITE result        ; Print the difference.
 HALT
 
+.data
 minuend:    .word 0  ; Minuend input.
 subtrahend: .word 0  ; Subtrahend input.
 result:     .word 0  ; Difference between the inputs.

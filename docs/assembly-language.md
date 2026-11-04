@@ -4,12 +4,14 @@ The Simpletron interpreter accepts assembly source files in addition to the orig
 
 ## Source format
 
-A source file contains one statement per line. Blank lines are ignored. Each statement is one of the following forms:
+A source file contains one statement per line. Blank lines are ignored. A source file may contain `.code` and `.data` sections in either order. The assembler always emits the complete code section before the complete data section.
+
+Each statement is one of the following forms:
 
 ```asm
 MNEMONIC operand
 label: MNEMONIC operand
-label: .word value
+.word value
 ```
 
 Mnemonics and labels are case-insensitive. An instruction operand is either a decimal memory address or a label that resolves to a memory address.
@@ -50,35 +52,29 @@ value:  .word 7
 
 The assembler performs two passes. It first assigns addresses to labels, then resolves label operands. A label can therefore refer to a statement that appears later in the file.
 
-## Data directives
+## Sections and data directives
 
-`.word` and `.data` reserve one memory word for a signed 16-bit integer value. Both directives are equivalent.
+`.code` selects the code section and `.data` selects the data section. Section markers do not emit memory words and do not accept operands. The sections may appear multiple times and in either order.
+
+The data section accepts `.word`, which reserves one memory word for a signed 16-bit integer value. `.word` statements must be placed after `.data`.
 
 ```asm
-value:  .word 42
-counter: .data -1
+.data
+value:   .word 42
+counter: .word -1
+
+.code
+LOAD value
+HALT
 ```
+
+The assembler lays out the example as code first (`LOAD`, `HALT`) followed by `value` and `counter`, even though the data section appears first in the source.
 
 Simpletron has 100 memory positions, numbered from `0` to `99`. A complete assembled program must fit within those positions.
 
 ## Instruction set
 
-| Opcode | Mnemonic | Operand | Description |
-| ---: | --- | --- | --- |
-| 00 | `NOOP` | none | Consume one cycle without changing machine state. |
-| 10 | `READ` | address | Read a value from the input provider into memory. |
-| 11 | `WRITE` | address | Write a memory value to the output. |
-| 20 | `LOAD` | address | Copy a memory value into the accumulator. |
-| 21 | `STORE` | address | Copy the accumulator into memory. |
-| 30 | `ADD` | address | Add a memory value to the accumulator. |
-| 31 | `SUBTRACT` | address | Subtract a memory value from the accumulator. |
-| 32 | `DIVIDE` | address | Divide the accumulator by a memory value. |
-| 33 | `MULTIPLY` | address | Multiply the accumulator by a memory value. |
-| 40 | `BRANCH` | address | Branch unconditionally to an address. |
-| 41 | `BRANCHNEG` | address | Branch if the accumulator is negative. |
-| 42 | `BRANCHZERO` | address | Branch if the accumulator is zero. |
-| 43 | `BRANCHPOS` | address | Branch if the accumulator is positive. |
-| 50 | `HALT` | none | Stop execution. |
+See the complete [Simpletron instruction set reference](instruction-set.md) for opcodes, mnemonics, operands, and descriptions.
 
 `NOOP` and `HALT` do not accept operands. Every other instruction requires an operand between `0` and `99`, or a label resolving to that range.
 
@@ -88,6 +84,7 @@ The following program reads two values, adds them, and writes the result:
 
 ```asm
 ; Add two input values.
+.code
 READ first          ; Read the first value.
 READ second         ; Read the second value.
 LOAD first          ; Load the first value.
@@ -96,6 +93,7 @@ STORE result        ; Save the sum.
 WRITE result        ; Display the sum.
 HALT                ; Finish execution.
 
+.data
 first:  .word 0
 second: .word 0
 result: .word 0
@@ -124,5 +122,7 @@ Syntax errors are reported as `AssemblyError` exceptions by the assembler. The e
 - Extra tokens after an operand.
 - Duplicate labels.
 - Undefined or invalid numeric operands.
+- A `.data` section marker with an operand.
+- Statements other than `.word` inside the data section.
 - Data values outside the signed 16-bit range.
 - Programs larger than 100 memory words.

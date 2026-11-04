@@ -21,13 +21,15 @@ std::string readSourceFile(const std::string& fileName) {
 
 TEST(Assembler, EncodesMnemonicsAndResolvesLabels) {
 	const auto program = Assembler::assemble(
+		".data\n"
+		"value: .word 40\n"
+		"one:   .word 2\n"
+		"result: .word 0\n"
+		".code\n"
 		"start: LOAD value\n"
 		"        ADD one\n"
 		"        STORE result\n"
-		"        HALT\n"
-		"value: .word 40\n"
-		"one:   .data 2\n"
-		"result: .word 0\n");
+		"        HALT\n");
 
 	ASSERT_EQ(program.size(), 7);
 	EXPECT_EQ(program[0], makeInstruction(OpCode::LOAD, 4));
@@ -37,6 +39,10 @@ TEST(Assembler, EncodesMnemonicsAndResolvesLabels) {
 	EXPECT_EQ(program[4], 40);
 	EXPECT_EQ(program[5], 2);
 	EXPECT_EQ(program[6], 0);
+}
+
+TEST(Assembler, RejectsDataSectionOperands) {
+	EXPECT_THROW(Assembler::assemble(".data 10\n"), AssemblyError);
 }
 
 TEST(Assembler, AcceptsCommentsAndLegacyNumericWords) {

@@ -7,13 +7,23 @@
 #include <limits>
 #include <map>
 #include <sstream>
-#include <string_view>
+#include <vector>
 
 namespace {
+enum class Section {
+	CODE,
+	DATA
+};
+
 struct Statement {
 	size_t line;
 	std::string operation;
 	std::string operand;
+};
+
+struct Label {
+	Section section;
+	size_t offset;
 };
 
 std::string upper(std::string value) {
@@ -60,12 +70,13 @@ AssemblyError::AssemblyError(size_t line, const std::string& message)
 	: std::runtime_error(std::format("Assembly error on line {}: {}", line, message)), line_(line) {}
 
 std::vector<int16_t> Assembler::assemble(const std::string& source) {
-	std::vector<Statement> statements;
-	std::map<std::string, int> labels;
+	std::vector<Statement> codeStatements;
+	std::vector<Statement> dataStatements;
+	std::map<std::string, Label> labels;
 	std::istringstream input(source);
 	std::string lineText;
 	size_t lineNumber = 0;
-	int address = 0;
+	Section section = Section::CODE;
 
 	while (std::getline(input, lineText)) {
 		++lineNumber;
@@ -75,12 +86,22 @@ std::vector<int16_t> Assembler::assemble(const std::string& source) {
 		if (!(tokens >> first))
 			continue;
 
+		const auto operation = upper(first);
+		if (operation == ".CODE" || operation == ".DATA") {
+			std::string extra;
+			if (tokens >> extra)
+				throw AssemblyError(lineNumber, "section directives do not accept operands.");
+			section = operation == ".CODE" ? Section::CODE : Section::DATA;
+			continue;
+		}
+
 		if (!first.empty() && first.back() == ':') {
 			first.pop_back();
 			const auto label = upper(first);
 			if (label.empty() || labels.contains(label))
 				throw AssemblyError(lineNumber, "invalid or duplicate label.");
-			labels[label] = address;
+			const auto offset = section == Section::CODE ? codeStatements.size() : dataStatements.size();
+			labels[label] = { section, offset };
 			if (!(tokens >> first))
 				continue;
 		}
@@ -91,34 +112,55 @@ std::vector<int16_t> Assembler::assemble(const std::string& source) {
 		if (tokens >> extra)
 			throw AssemblyError(lineNumber, "too many tokens.");
 
-		const auto operation = upper(first);
-		if (operation == ".WORD" || operation == ".DATA") {
+		const auto statementOperation = upper(first);
+		if (statementOperation == ".DATA") {
+			throw AssemblyError(lineNumber, "'.data' selects the data section and does not accept a value.");
+		} else if (statementOperation == ".WORD") {
 			if (operand.empty())
-				throw AssemblyError(lineNumber, "data directives require a value.");
-		} else if (!mnemonics.contains(operation)) {
+				throw AssemblyError(lineNumber, "'.word' requires a value.");
+		} else if (section == Section::DATA) {
+			throw AssemblyError(lineNumber, "the data section accepts only '.word' statements.");
+		} else if (!mnemonics.contains(statementOperation)) {
 			int value = parseInteger(first, lineNumber);
 			if (!operand.empty())
 				throw AssemblyError(lineNumber, "numeric words cannot have operands.");
 			if (value < std::numeric_limits<int16_t>::min() || value > std::numeric_limits<int16_t>::max())
 				throw AssemblyError(lineNumber, "data value is outside the int16 range.");
 		} else {
-			const auto opcode = mnemonics.at(operation);
+			const auto opcode = mnemonics.at(statementOperation);
 			if (takesOperand(opcode) && operand.empty())
 				throw AssemblyError(lineNumber, "this instruction requires an operand.");
 			if (!takesOperand(opcode) && !operand.empty())
 				throw AssemblyError(lineNumber, "this instruction does not accept an operand.");
 		}
 
-		if (address >= MEM_SIZE)
+		const auto statementCount = codeStatements.size() + dataStatements.size();
+		if (statementCount >= MEM_SIZE)
 			throw AssemblyError(lineNumber, "program exceeds Simpletron memory.");
-		statements.push_back({ lineNumber, operation, operand });
-		++address;
+		const Statement statement{ lineNumber, statementOperation, operand };
+		if (section == Section::CODE)
+			codeStatements.push_back(statement);
+		else
+			dataStatements.push_back(statement);
 	}
+
+	const auto dataStart = codeStatements.size();
+	std::map<std::string, int> addresses;
+	for (const auto& [name, label] : labels) {
+		addresses[name] = static_cast<int>(label.section == Section::CODE
+			? label.offset
+			: dataStart + label.offset);
+	}
+
+	std::vector<Statement> statements;
+	statements.reserve(codeStatements.size() + dataStatements.size());
+	statements.insert(statements.end(), codeStatements.begin(), codeStatements.end());
+	statements.insert(statements.end(), dataStatements.begin(), dataStatements.end());
 
 	std::vector<int16_t> program;
 	program.reserve(statements.size());
 	for (const auto& statement : statements) {
-		if (statement.operation == ".WORD" || statement.operation == ".DATA") {
+		if (statement.operation == ".WORD") {
 			const int value = parseInteger(statement.operand, statement.line);
 			if (value < std::numeric_limits<int16_t>::min() || value > std::numeric_limits<int16_t>::max())
 				throw AssemblyError(statement.line, "data value is outside the int16 range.");
@@ -136,8 +178,8 @@ std::vector<int16_t> Assembler::assemble(const std::string& source) {
 		int operand = 0;
 		if (!statement.operand.empty()) {
 			const auto label = upper(statement.operand);
-			if (labels.contains(label))
-				operand = labels.at(label);
+			if (addresses.contains(label))
+				operand = addresses.at(label);
 			else
 				operand = parseInteger(statement.operand, statement.line);
 		}
