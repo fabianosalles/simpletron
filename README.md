@@ -29,15 +29,36 @@ The simpletron machine language contains a few instructions
 | 43   | branchpos  | Branch to a specific location in memory if the accumulator is positive
 | 50   | halt       | called when the program is done with its task
 
+## Assembly language
+
+The interpreter accepts both the original numeric format and Simpletron assembly source. Assembly instructions are case-insensitive, labels end with a colon, and comments start with `#`, `;`, or `//`.
+
+The complete assembly-language reference is available in [docs/assembly-language.md](docs/assembly-language.md).
+
+```asm
+		load value
+		add one
+		store result
+		halt
+
+value:  .word 40
+one:    .data 2
+result: .word 0
+```
+
+Instruction operands may be decimal memory addresses or labels. The `.word` and `.data` directives reserve one memory word for a signed 16-bit value. The assembler reports syntax errors with their source line number.
+
+Assembly programs use one statement per line. Labels are resolved automatically, and the assembler supports `NOOP`, `READ`, `WRITE`, `LOAD`, `STORE`, arithmetic operations, conditional branches, `BRANCHPOS`, and `HALT`. Existing numeric `.txt` programs remain supported for compatibility.
+
 ## Goals
 
 This program was originally written as an academic exercise, so please be kind with my student's code style.
 I've discovered this code in one old backup disk, and I decided to make some improvements:
 
  - [ ] Add runtime error checks
- - [ ] Add mnemonic support to the language 	
+  - [x] Add mnemonic support to the language 	
  - [ ] Add debugging support (breakpoints, step-by-step execution, etc)	
- - [ ] Implement a proper parser
+  - [x] Implement a proper parser
  - [x] Add support to g++ and linux ( acheived via CMake )
  - [ ] Create a UI mode
  
@@ -52,13 +73,20 @@ cmake --build build --config Release
 ```
 
 ## Running
-Execute the interpreter binary with a sample file as an argument. The sample files are located in the `samples` directory.
+Execute the interpreter binary with a sample file as an argument. The sample files are located in the `samples` directory. Both numeric `.txt` files and assembly `.asm` files are supported.
 
 
 |OS |Command|
 |--|-------|
 |Linux  |```./build/bin/simpletron samples/add.txt```|
 |Windows|```.\build\bin\simpletron.exe samples\add.txt```|
+
+For example, to run the assembly version of the add sample:
+
+|OS |Command|
+|--|-------|
+|Linux  |```./build/bin/simpletron samples/add.asm```|
+|Windows|```.\build\bin\simpletron.exe samples\add.asm```|
 
 ## Running Tests
 To execute the unit tests, first build the project with the `-DBUILD_TESTS=ON` option:
